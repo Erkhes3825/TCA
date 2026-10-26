@@ -1,0 +1,8 @@
+node_modules
+dist
+.build-web-tmp
+.DS_Store
+*.log
+.env
+.env.*
+*.tsbuildinfo
