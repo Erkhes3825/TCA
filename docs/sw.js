@@ -1,7 +1,7 @@
 // オフラインでも開けるようにする Service Worker（npm run build で docs/ に入る）。
 // ネットワーク優先：つながるときは常に最新を取り、つながらないときだけ保存済みのものを出す。
 // キャッシュ名の末尾（バージョン）はビルド時に scripts/build-web.mjs が埋める。
-const CACHE = 'tsutaeru-0.9.0-1792982201261';
+const CACHE = 'tsutaeru-0.9.0-1792986722351';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {

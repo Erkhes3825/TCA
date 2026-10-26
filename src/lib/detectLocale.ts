@@ -57,14 +57,19 @@ export function countryName(code: string, locale: string): string {
 
 /**
  * 端末の言語リストを上から見て、最初の対応言語を採る。
- * 日本在住で「日本語・英語」の順に設定している人が多いので、先頭が日本語や非対応言語でも諦めない。
+ * 日本在住で「日本語・英語」の順に設定している人が多いので、日本語より後ろにある日本語以外の対応言語を優先する。
+ * 日本語しか当たらなければ日本語を採る（iPhone の Safari は端末の言語を1つしか渡さないので、日本語設定の iPhone はここに来る）。
  * どれにも当たらなければ ok=false にして、一覧から選ばせる。誤判定は最初の画面で本人が直せる
  */
 export function detectLocale(tags: readonly string[], formatCountry: string | null = null): Detection {
+  let ja: Detection | null = null;
   for (let i = 0; i < tags.length; i++) {
     const d = detectTag(String(tags[i]), i, formatCountry);
-    if (d.ok) return d;
+    if (!d.ok) continue;
+    if (d.lang !== 'ja') return d;
+    ja ??= d;
   }
+  if (ja) return ja;
   return { ok: false, tag: String(tags[0] ?? ''), rank: 0, lang: null, country: null, countrySource: null, region: null };
 }
 
@@ -75,8 +80,7 @@ function detectTag(first: string, rank: number, formatCountry: string | null): D
   let base = (parts[0] ?? '').toLowerCase();
   if (base === 'fil') base = 'tl';
   if (base === 'in') base = 'id'; // 旧インドネシア語コード
-  // 日本語は対応言語だが自動では選ばない。端末が日本語でも本人が日本語を話すとは限らないため
-  if (base === 'ja' || !LANGS.some((l) => l.id === base)) return out;
+  if (!LANGS.some((l) => l.id === base)) return out;
   const lang = base as LangId;
 
   let country = '';
@@ -87,6 +91,8 @@ function detectTag(first: string, rank: number, formatCountry: string | null): D
   }
   const countrySource: Detection['countrySource'] = country ? 'tag' : formatCountry ? 'format' : null;
   if (!country && formatCountry) country = formatCountry.toUpperCase();
+  // 日本語は話されている国がほぼ日本だけなので、国が読めなければ日本とみなす（iPhone の Safari は ja だけを渡すことがある）
+  if (!country && lang === 'ja') country = 'JP';
 
   let region: string | null = null;
   if (lang === 'zh') {
