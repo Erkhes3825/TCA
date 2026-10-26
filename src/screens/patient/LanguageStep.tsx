@@ -39,6 +39,10 @@ export default function LanguageStep({ detection, manual, lang, region, onPickLa
           <section className="stack-18">
             {/* 既定では端末から読んだ値だけを見せる。読み取り元や日本語の補足は「Details」の中 */}
             <h1>{t.ask}</h1>
+            {/* 日本在住の外国人は端末を日本語にしていることが多い。日本語を読めない人にも別の言語を選べると伝える */}
+            {lang === 'ja' ? (
+              <p className="note" lang="en">Your phone is set to Japanese. If you speak another language, tap “{t.chooseAnother}” below.</p>
+            ) : null}
             <div className="detect-card">
               <div className="detect-card__head">
                 <Icon name="phone" size={16} />
@@ -76,7 +80,7 @@ export default function LanguageStep({ detection, manual, lang, region, onPickLa
               {details ? (
                 <div id="detect-details" className="details">
                   <span>{t.phoneSetting}: <code>{detection.tag || '—'}</code></span>
-                  {detection.rank > 0 ? <Gloss>端末の言語リストの{detection.rank + 1}番目にある言語です（先頭は対応外の言語）</Gloss> : null}
+                  {detection.rank > 0 ? <Gloss>端末の言語リストの{detection.rank + 1}番目にある言語です（先頭は日本語か対応外の言語）</Gloss> : null}
                   <Gloss>
                     言語：{L.ja}
                     {detection.country
@@ -97,7 +101,7 @@ export default function LanguageStep({ detection, manual, lang, region, onPickLa
           <section className="stack-22">
             {!detection.ok && !manual ? (
               <p className="note" lang="ja">
-                端末の言語設定（{detection.tag || '不明'}）は対応言語に当たらないため、一覧から選んでもらいます。日本語設定の端末もこの扱いです。
+                端末の言語設定（{detection.tag || '不明'}）は対応言語に当たらないため、一覧から選んでもらいます。
               </p>
             ) : null}
             <div className="stack-6">
