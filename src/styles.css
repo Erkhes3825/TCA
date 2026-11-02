@@ -229,12 +229,17 @@ html[data-text='xl'] :is(.bubble, .hint-box, .hint-panel, .understood, .review d
 .flag { align-self: flex-start; font-size: 0.8125rem; font-weight: 700; border-radius: 0.375rem; padding: 0.1875rem 0.5rem; }
 .flag--warn { background: var(--term-bg); color: var(--term-fg); }
 .flag--alert { background: var(--alert-bg); color: var(--alert-fg); }
+.flag--req { background: transparent; color: var(--accent); border: 1px solid currentColor; padding: 0.125rem 0.4375rem; }
+.required-bar { margin: 0.75rem 2rem 0.25rem; padding: 0.75rem 1.125rem; border-radius: 0.75rem; background: var(--accent-soft); display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.875rem; }
+.required-bar strong { font-size: 1rem; color: var(--accent); }
+.required-bar--missing { background: var(--term-bg); }
+.required-bar--missing strong { color: var(--term-fg); }
 .sheet__section { padding-top: 1.75rem; display: flex; flex-direction: column; gap: 0.25rem; }
 .sheet__section h2 { font-size: 1.0625rem; color: var(--accent); }
 .sheet__section p { font-size: 0.875rem; color: var(--muted); }
 .sheet__foot { margin: 0.75rem 2rem 1.75rem; padding: 0.875rem 1.125rem; border-radius: 0.75rem; background: var(--ground); font-size: 0.875rem; line-height: 1.7; color: var(--ink-2); }
 @media (max-width: 600px) {
   .sheet__head, .sheet__meta, .sheet__rows { padding-left: 1.125rem; padding-right: 1.125rem; }
-  .alert, .sheet__foot { margin-left: 1.125rem; margin-right: 1.125rem; }
+  .alert, .required-bar, .sheet__foot { margin-left: 1.125rem; margin-right: 1.125rem; }
 }
 @media print { html { font-size: 16px !important; } .page--gray { background: #fff; padding: 0; } .sheet { border: 0; } .btn-toggle, .btn-outline, .case-switch { display: none; } }

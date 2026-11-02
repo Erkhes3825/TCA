@@ -15,6 +15,8 @@ export interface SheetRow {
   original: string;
   terms: { from: string; to: string }[];
   flag?: { label: string; tone: 'warn' | 'alert' };
+  /** 必須項目（REQUIRED_ITEMS）に当たる行 */
+  required?: boolean;
 }
 
 export interface SheetCase {
@@ -41,6 +43,7 @@ export const SHEET_ALLERGY_LABEL = 'アレルギー：ペニシリン系抗菌�
 /** 行の並びと日本語の訳（全言語共通） */
 const ROWS_JA: Omit<SheetRow, 'original' | 'terms'>[] = [
   { key: '主訴', value: '昨夜から続く強い腹痛。主に右の肋骨の下（右季肋部）。' },
+  { key: '発症時期', value: '昨夜から' },
   { key: '痛みの性質', value: '鋭い、刺すような痛み。間欠的（痛んだり治まったりする）。' },
   { key: '増悪因子', value: '揚げ物（フライドチキン）を食べた後に悪化。' },
   { key: '痛みの強さ', value: 'NRS 7 / 10' },
@@ -53,7 +56,39 @@ const ROWS_JA: Omit<SheetRow, 'original' | 'terms'>[] = [
 const SCALE_NOTE = '0〜10のスケールで「7」を画面上で選択';
 
 function rows(originals: Pick<SheetRow, 'original' | 'terms'>[]): SheetRow[] {
-  return ROWS_JA.map((r, i) => ({ ...r, ...originals[i] }));
+  return ROWS_JA.map((r, i) => ({ ...r, ...originals[i], required: isRequiredKey(r.key) }));
+}
+
+// ===== 必須項目 =====
+// 患者が空欄のまま送信できない項目。「わからない」「答えない」は回答として扱う（印を付けて医療者に渡す）。
+// 一般的な問診の型からの提案で、医療者の確認はまだ。本番前に医療の協力者に見てもらう。
+// 患者画面は、口述・スケール・聞き足しのどれも答えないと次に進めない作りなので、モックでは必ず埋まる。
+
+/** 必須項目と、問診票でそれに当たる行の項目名。妊娠は女性・15〜49歳のときだけ聞く */
+export const REQUIRED_ITEMS: { label: string; keys: string[]; conditional?: true }[] = [
+  { label: '主訴', keys: ['主訴'] },
+  { label: '発症時期', keys: ['発症時期'] },
+  { label: '痛みの強さ', keys: ['痛みの強さ'] },
+  { label: '随伴症状', keys: ['随伴症状'] },
+  { label: '発熱', keys: ['発熱'] },
+  { label: '薬のアレルギー', keys: ['アレルギー'] },
+  { label: '常用薬（抗凝固薬を含む）', keys: ['常用薬', '抗凝固薬・抗血小板薬'] },
+  { label: '既往歴', keys: ['既往歴'] },
+  { label: '妊娠の可能性', keys: ['妊娠の可能性'], conditional: true },
+];
+
+function isRequiredKey(key: string): boolean {
+  return REQUIRED_ITEMS.some((r) => r.keys.includes(key));
+}
+
+/** 必須項目の埋まり具合。行が無い条件付きの項目は「対象外」 */
+export function requiredStatus(allRows: SheetRow[]): { label: string; state: 'ok' | 'missing' | 'na' }[] {
+  return REQUIRED_ITEMS.map((item) => {
+    const found = item.keys.map((k) => allRows.find((r) => r.key === k));
+    if (found.every((r) => r === undefined) && item.conditional) return { label: item.label, state: 'na' };
+    const ok = found.every((r) => r !== undefined && r.value !== '未回答');
+    return { label: item.label, state: ok ? 'ok' : 'missing' };
+  });
 }
 
 export const SHEET_CASES: Record<CaseLang, SheetCase> = {
@@ -65,6 +100,7 @@ export const SHEET_CASES: Record<CaseLang, SheetCase> = {
     allergyOriginal: "I'm allergic to penicillin.",
     rows: rows([
       { original: "My tummy's been killing me since last night, mostly up here, under my ribs on the right.", terms: [{ from: 'tummy', to: '腹部（口語）' }, { from: 'killing me', to: '強い痛み（慣用表現）' }] },
+      { original: 'since last night', terms: [] },
       { original: 'Sort of sharp and stabbing. It comes and goes,', terms: [{ from: 'comes and goes', to: '間欠的' }] },
       { original: 'and it got worse after I had fried chicken.', terms: [{ from: 'fried chicken', to: '脂肪の多い食事' }] },
       { original: SCALE_NOTE, terms: [] },
@@ -82,6 +118,7 @@ export const SHEET_CASES: Record<CaseLang, SheetCase> = {
     allergyOriginal: '我对青霉素过敏。',
     rows: rows([
       { original: '从昨天晚上开始肚子疼得要命，主要是这儿，右边肋骨下面。', terms: [{ from: '肚子', to: '腹部（口語）' }, { from: '疼得要命', to: '強い痛み（慣用表現）' }] },
+      { original: '从昨天晚上开始', terms: [] },
       { original: '一阵一阵的，像针扎一样，', terms: [{ from: '一阵一阵的', to: '間欠的' }, { from: '像针扎一样', to: '刺すような痛み' }] },
       { original: '吃了炸鸡以后更疼了。', terms: [{ from: '炸鸡', to: '脂肪の多い食事' }] },
       { original: SCALE_NOTE, terms: [] },
@@ -99,6 +136,7 @@ export const SHEET_CASES: Record<CaseLang, SheetCase> = {
     allergyOriginal: 'Tui bị dị ứng penicillin.',
     rows: rows([
       { original: 'Từ tối qua tới giờ bụng tui đau muốn xỉu, chủ yếu ở đây nè, dưới xương sườn bên phải.', terms: [{ from: 'đau muốn xỉu', to: '強い痛み（慣用表現）' }] },
+      { original: 'Từ tối qua tới giờ', terms: [] },
       { original: 'Đau nhói nhói như kim đâm, lúc đau lúc không,', terms: [{ from: 'lúc đau lúc không', to: '間欠的' }] },
       { original: 'ăn gà rán xong là đau dữ hơn.', terms: [{ from: 'gà rán', to: '脂肪の多い食事' }] },
       { original: SCALE_NOTE, terms: [] },
@@ -117,7 +155,7 @@ export const CASE_LANGS: CaseLang[] = ['en', 'zh', 'vi'];
 // 選択肢で答えたものは、原文欄に患者が押したボタンの文言を出す。
 
 /** 聞き足しのうち、サンプル症例の自由口述で拾えたため聞いていない項目 */
-export const FOLLOW_UP_SKIPPED = '悪寒、常用薬、薬のアレルギーの有無';
+export const FOLLOW_UP_SKIPPED = '発症時期、悪寒、常用薬、薬のアレルギーの有無';
 
 const FOLLOW_UP_KEYS: Record<FollowUpId, string> = {
   onsetConfirm: '発症時期', onsetMode: '発症様式', course: '経過', selfCare: '受診前の対処', fatigue: '倦怠感・食欲',
@@ -184,20 +222,22 @@ export function followUpRows(lang: CaseLang, stored: { asked: FollowUpId[]; answ
   return asked.map((id): SheetRow => {
     const key = FOLLOW_UP_KEYS[id];
     const a = answers[id];
-    if (a === undefined) return { key, value: '未回答', original: '—', terms: [], flag: { label: '未回答', tone: 'warn' } };
+    const required = isRequiredKey(key);
+    if (a === undefined) return { key, value: '未回答', original: '—', terms: [], flag: { label: '未回答', tone: 'warn' }, required };
     if (Array.isArray(a)) {
       return {
         key,
         value: a.map((x) => (x === 'none' ? 'なし' : ja.illness[x])).join('、'),
         original: a.map((x) => (x === 'none' ? t.opt.none : t.illness[x])).join(' / '),
         terms: [],
+        required,
       };
     }
-    if (typeof a === 'object') return { key, value: `${a.h} cm / ${a.w} kg`, original: `${a.h} cm / ${a.w} kg`, terms: [] };
+    if (typeof a === 'object') return { key, value: `${a.h} cm / ${a.w} kg`, original: `${a.h} cm / ${a.w} kg`, terms: [], required };
     if (a === 'voice') {
-      if (!isVoiceId(id)) return { key, value: '—', original: '—', terms: [] };
-      return { key, value: VOICE_JA[id], original: getVoiceAnswer(lang, id).answer, terms: VOICE_TERMS[lang][id] };
+      if (!isVoiceId(id)) return { key, value: '—', original: '—', terms: [], required };
+      return { key, value: VOICE_JA[id], original: getVoiceAnswer(lang, id).answer, terms: VOICE_TERMS[lang][id], required };
     }
-    return { key, value: choiceValueJa(id, a), original: t.opt[a], terms: [], flag: choiceFlag(id, a) };
+    return { key, value: choiceValueJa(id, a), original: t.opt[a], terms: [], flag: choiceFlag(id, a), required };
   });
 }

@@ -42,27 +42,16 @@ export interface FollowUpDef {
 /** 出生時の性別が女性（UI.sexes の0番）で、15〜49歳（UI.ages の1・2番） */
 const childbearing = (b: { age: number; sex: number }) => b.sex === 0 && (b.age === 1 || b.age === 2);
 
-/** 聞き足しの並び（CSV と同じ順） */
+/**
+ * 聞き足しの並び（CSV と同じ順）。2026-11：ピッチで2分ほどで通せるよう、モックでは4問に絞った。
+ * 答え方の種類（声・ボタン・複数選択）と、年齢・性別で聞く・聞かないが変わる質問を1つずつ見せる。
+ * 外した質問（保険・通訳・身長体重・喫煙・飲酒・渡航歴など）の文言は FOLLOW_UP_TEXT に本番用として残してある
+ */
 export const FOLLOW_UPS: FollowUpDef[] = [
-  { id: 'onsetConfirm', kind: 'choice', options: ['correct', 'fix'] },
-  { id: 'onsetMode', kind: 'choice', options: ['sudden', 'gradual', 'unknown'] },
-  { id: 'course', kind: 'choice', options: ['better', 'same', 'worse', 'waves'] },
   { id: 'selfCare', kind: 'voice', options: ['nothingDone'] },
-  { id: 'fatigue', kind: 'voice', options: [] },
   { id: 'bloodThinner', kind: 'choice', options: ['yes', 'no', 'unknown'] },
-  { id: 'allergyDetail', kind: 'voice', options: ['dontRemember'] },
-  { id: 'foodLatex', kind: 'choice', options: ['yes', 'no', 'unknown'] },
   { id: 'illness', kind: 'multi', options: [] },
-  { id: 'surgery', kind: 'choice', options: ['yes', 'no'] },
   { id: 'pregnancy', kind: 'choice', options: ['yes', 'no', 'unknown', 'noAnswer'], when: childbearing },
-  { id: 'breastfeeding', kind: 'choice', options: ['yes', 'no'], when: childbearing },
-  { id: 'smoking', kind: 'choice', options: ['smoker', 'exSmoker', 'nonSmoker'] },
-  { id: 'alcohol', kind: 'voice', options: ['noDrink'] },
-  { id: 'travel', kind: 'choice', options: ['yes', 'no'] },
-  { id: 'heightWeight', kind: 'measure', options: ['unknown'] },
-  { id: 'insurance', kind: 'choice', options: ['jpInsurance', 'travelInsurance', 'noInsurance', 'unknown'] },
-  { id: 'firstVisit', kind: 'choice', options: ['yes', 'no'] },
-  { id: 'interpreter', kind: 'choice', options: ['need', 'noNeed', 'unknown'] },
 ];
 
 export function activeFollowUps(b: { age: number; sex: number }): FollowUpDef[] {

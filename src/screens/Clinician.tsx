@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Icon from '../components/Icon';
 import {
-  CASE_LANGS, FOLLOW_UP_SKIPPED, SHEET_ALLERGY_LABEL, SHEET_CASES, SHEET_META_COMMON, followUpRows,
+  CASE_LANGS, FOLLOW_UP_SKIPPED, SHEET_ALLERGY_LABEL, SHEET_CASES, SHEET_META_COMMON, followUpRows, requiredStatus,
   type CaseLang, type SheetCase, type SheetRow,
 } from '../data/clinicianSheet';
 import { recallCaseLang, recallFollowUps } from '../lib/uiLang';
@@ -14,6 +14,9 @@ export default function Clinician() {
   // 患者画面で聞き足しに答えていればその内容、無ければサンプル
   const [storedFollowUps] = useState(recallFollowUps);
   const fuRows = followUpRows(caseLang, storedFollowUps);
+  const required = requiredStatus([...c.rows, ...fuRows]);
+  const applicable = required.filter((r) => r.state !== 'na');
+  const missing = applicable.filter((r) => r.state === 'missing');
   const meta = [
     SHEET_META_COMMON[0],
     { k: '使用言語', v: c.meta.language },
@@ -62,15 +65,24 @@ export default function Clinician() {
           <span>患者申告（原文：<span lang={c.htmlLang}>{c.allergyOriginal}</span>）</span>
         </div>
 
+        {/* 必須項目が空欄なく揃っているか。医療者が最初に見る */}
+        <div className={`required-bar${missing.length ? ' required-bar--missing' : ''}`}>
+          <strong>必須項目 {applicable.length - missing.length} / {applicable.length} 回答あり</strong>
+          <span>{required.map((r) => `${r.label}${r.state === 'na' ? '（対象外）' : r.state === 'missing' ? '（未回答）' : ''}`).join('・')}</span>
+        </div>
+
         <div className="sheet__rows">
           {c.rows.map((r) => <Row key={r.key} r={r} c={c} showOriginal={showOriginal} />)}
           <div className="sheet__section">
-            <h2>聞き足し（自由口述で拾えなかった必須項目）</h2>
+            <h2>聞き足し（自由口述で拾えなかった項目）</h2>
             <p>口述で聞き取れたため聞き足していない項目：{FOLLOW_UP_SKIPPED}{storedFollowUps ? '' : '。以下はサンプルの回答（患者画面で答えると、その内容に替わります）'}</p>
           </div>
           {fuRows.map((r) => <Row key={r.key} r={r} c={c} showOriginal={showOriginal} />)}
         </div>
 
+        <p className="sheet__foot">
+          モックでは聞き足しを4問に絞っています。本番では、口述で拾えなかった項目（健康保険・通訳の要否・身長体重・喫煙・飲酒・渡航歴など）をAIが選んで聞き足します。
+        </p>
         <p className="sheet__foot">
           本票は患者本人の申告をAIで翻訳・整理したものです。診断や病名の推定は含みません。重要な項目は原文と併せて確認してください。黄色の表示は、患者の口語・方言を医療用語に置き換えた箇所です。
         </p>
@@ -84,6 +96,7 @@ function Row({ r, c, showOriginal }: { r: SheetRow; c: SheetCase; showOriginal: 
     <div className="sheet__row">
       <div className="sheet__key">
         <span>{r.key}</span>
+        {r.required ? <span className="flag flag--req">必須</span> : null}
         {r.flag ? <span className={`flag flag--${r.flag.tone}`}>{r.flag.label}</span> : null}
       </div>
       <div className="sheet__val">
