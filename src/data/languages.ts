@@ -13,7 +13,7 @@ export interface Lang {
 }
 
 // 2026-10：使用人口の少ないネパール語・タイ語を外し、モンゴル語（キリル文字）と日本語を加えた。
-// 日本語は端末設定からは自動で選ばない（日本在住の外国人は端末を日本語にしていることが多い。detectLocale.ts）。
+// 日本語は、端末の言語リストに日本語以外の対応言語が無いときだけ自動で選ぶ（detectLocale.ts）。
 // 画面の文言は src/data/ui.ts。
 export const LANGS: Lang[] = [
   { id: 'en', native: 'English', ja: '英語', htmlLang: 'en', regions: ['UK', 'US', 'Australia', 'India', 'Philippines', 'Nigeria'] },

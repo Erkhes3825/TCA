@@ -1,7 +1,16 @@
 # Tsutaeru（モック）— Web アプリ版
 
 外国人患者が自分のスマホで症状を話すと、日本語の問診票になって医療者に渡る——という Web アプリの**ピッチ用モック**です。
-音声認識・翻訳はまだ入っていません。サンプルの会話を台本どおりに再生しています。
+
+動き方は、`config.json` の設定で3段階に変わります。
+
+| 設定 | 動き |
+| --- | --- |
+| どちらも空 | **デモ**。マイクを押すと、サンプルの会話（英語・中国語・ベトナム語）を台本どおりに再生する。問診票もサンプル |
+| `speechTokenUrl` だけ | **本物の音声認識**（Azure AI Speech）。話した内容は文字になるが、日本語には訳さない。問診票はサンプルのまま |
+| `speechTokenUrl` と `interpretUrl` | 音声認識に加えて、**Azure OpenAI が口述を日本語に訳し、問診票の項目に当てはめる**。当てはまらなかった必須項目だけを聞き足し、問診票は今回の回答になる |
+
+今の公開サイトは2段階目です（`interpretUrl` は空）。問診票を病院に届ける仕組み（回答の保存・受付番号・医療者のログイン）はまだ無く、受付番号と QR コードはダミーです。
 
 このフォルダをそのまま GitHub のリポジトリにすれば、**GitHub Pages で公開できます**。
 `docs/` にビルド済みのファイルが入っているので、**Node.js のインストールも GitHub Actions も要りません**。
@@ -9,6 +18,8 @@
 ## 音声認識（Azure AI Speech）をつなぐ
 
 `config.json` の `speechTokenUrl` に Azure Functions の URL を入れると、マイクを押したときに本物の音声認識が動きます（空ならデモのまま）。
+さらに `interpretUrl` も入れると、自由口述を Azure OpenAI が読んで問診票の項目に当てはめ、当てはまらなかった必須項目だけを聞き足します（空なら聞き足しを全部聞く）。
+Azure 全体の構成図（使うサービス・問診の流れ・AI が当てはめる項目の対応表・管理者の作業）：https://claude.ai/artifact/JsoZnSoiVfXAEVyJkfL3qC
 Azure 側の作り方は [`api/README.md`](api/README.md)。この機能を入れたあとの `docs/` は、`npm install` → `npm run build` で作り直す必要があります。
 
 
@@ -29,7 +40,7 @@ Azure 側の作り方は [`api/README.md`](api/README.md)。この機能を入�
 2. リポジトリの画面で **Add file → Upload files** を押す
 3. このフォルダの**中身**（`docs`・`src`・`public`・`scripts`・`speech-dict` の各フォルダと、`README.md`・`package.json` などのファイル）をまとめてドラッグ＆ドロップし、**Commit changes** を押す
    - フォルダごと（`tsutaeru-webapp` ごと）ではなく、中身を入れてください。`docs` がリポジトリの一番上に来るようにします
-   - 一度にアップロードできるのは 100 ファイルまでです。このフォルダは約 60 ファイルなので 1 回で入ります
+   - 一度にアップロードできるのは 100 ファイルまでです。このフォルダは約 75 ファイルなので 1 回で入ります
 4. **Settings → Pages** を開く
 5. **Build and deployment** の **Source** を「**Deploy from a branch**」にする
 6. **Branch** を「`main`」、フォルダを「**`/docs`**」にして **Save**
@@ -103,7 +114,9 @@ npm run build
 | 患者画面のボタン・見出し・質問の文言（10 言語） | `src/data/ui.ts` |
 | サンプルの会話（患者の回答） | `src/data/interview.ts` |
 | 聞き足しの質問と回答 | `src/data/followUps.ts` |
-| 医療者向け画面の内容 | `src/data/clinicianSheet.ts` |
+| 医療者向け画面の内容・必須項目 | `src/data/clinicianSheet.ts` |
+| AI が当てはめる項目（アプリ側） | `src/lib/interpret.ts` |
+| AI への指示・項目の定義（Azure 側） | `api/src/functions/interpret.js`（直したら Azure にデプロイし直す） |
 | 色・文字の大きさ | `src/styles.css`（色は先頭の `:root` にまとまっています） |
 | トップ画面のバージョン表記 | `package.json` の `version`（直して公開するたびに上げる） |
 
@@ -129,6 +142,8 @@ npm run build
 | `public/` | アイコン・manifest・`sw.js` の元ファイル（ビルドで `docs/` にコピーされる） |
 | `scripts/build-web.mjs` | `npm run build` の中身。1 枚の HTML にまとめて `docs/` に書き出す |
 | `speech-dict/` | 音声認識用の医療用語辞書の叩き台（中国語・日本語、4 言語対照表）。説明は中の README |
+| `api/` | Azure Functions（音声認識のトークン発行 `speechToken`、AI の当てはめ `interpret`）。GitHub Pages ではなく Azure にデプロイする。説明は中の README |
+| `public/config.json` | Azure Functions の URL（`speechTokenUrl`・`interpretUrl`）。ビルドで `docs/config.json` にコピーされる |
 | `package.json` ほか | ビルドの設定 |
 
-技術：Vite + React 18 + TypeScript。外部のサーバーや API は使っていません（すべてブラウザの中で動きます）。
+技術：Vite + React 18 + TypeScript。デモはすべてブラウザの中で動きます。音声認識と AI の当てはめを使うときだけ、Azure（AI Speech・OpenAI・Functions）につなぎます。
