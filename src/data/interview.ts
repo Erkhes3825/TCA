@@ -36,11 +36,14 @@ export interface Turn {
   reviewKey: string;
 }
 
-/** 質問の並び。文言は UI[lang].questions / reviewKeys */
+/**
+ * 質問の並び。文言は UI[lang].questions / reviewKeys。
+ * 2・3問目は痛みに限らない聞き方にしてある（咳・かゆみ・発疹などでも答えられる）。診療科ごとの質問はまだ無い
+ */
 const TURN_BASE: { kind: Turn['kind']; qJa: string }[] = [
   { kind: 'voice', qJa: '今日はどうされましたか？ご自身の言葉でどうぞ。' },
-  { kind: 'voice', qJa: 'どんな痛みですか？' },
-  { kind: 'scale', qJa: '今の痛みの強さは？（0＝痛みなし、10＝想像できる最悪の痛み）' },
+  { kind: 'voice', qJa: 'どんな感じですか？何をすると良くなる・悪くなるかも教えてください。' },
+  { kind: 'scale', qJa: '今のつらさはどのくらいですか？（0＝まったくない、10＝想像できる最悪）' },
   { kind: 'voice', qJa: 'ほかに気になる症状はありますか？' },
   { kind: 'voice', qJa: '熱はありますか？' },
   { kind: 'voice', qJa: 'アレルギーや、普段飲んでいる薬はありますか？' },

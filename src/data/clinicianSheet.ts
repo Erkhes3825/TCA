@@ -46,9 +46,9 @@ export const SHEET_ALLERGY_LABEL = 'アレルギー：ペニシリン系抗菌�
 const ROWS_JA: Omit<SheetRow, 'original' | 'terms'>[] = [
   { key: '主訴', value: '昨夜から続く強い腹痛。主に右の肋骨の下（右季肋部）。' },
   { key: '発症時期', value: '昨夜から' },
-  { key: '痛みの性質', value: '鋭い、刺すような痛み。間欠的（痛んだり治まったりする）。' },
+  { key: '症状の性質', value: '鋭い、刺すような痛み。間欠的（痛んだり治まったりする）。' },
   { key: '増悪因子', value: '揚げ物（フライドチキン）を食べた後に悪化。' },
-  { key: '痛みの強さ', value: 'NRS 7 / 10' },
+  { key: '症状の強さ', value: 'NRS 7 / 10（痛み）' },
   { key: '随伴症状', value: '悪心あり。嘔吐2回。下痢なし。' },
   { key: '発熱', value: '熱っぽさと悪寒あり。体温は未測定。', flag: { label: '体温未測定', tone: 'warn' } },
   { key: 'アレルギー', value: 'ペニシリン系抗菌薬', flag: { label: '要注意', tone: 'alert' } },
@@ -70,7 +70,7 @@ function rows(originals: Pick<SheetRow, 'original' | 'terms'>[]): SheetRow[] {
 export const REQUIRED_ITEMS: { label: string; keys: string[]; conditional?: true }[] = [
   { label: '主訴', keys: ['主訴'] },
   { label: '発症時期', keys: ['発症時期'] },
-  { label: '痛みの強さ', keys: ['痛みの強さ'] },
+  { label: '症状の強さ', keys: ['症状の強さ'] },
   { label: '随伴症状', keys: ['随伴症状'] },
   { label: '発熱', keys: ['発熱'] },
   { label: '薬のアレルギー', keys: ['アレルギー'] },
@@ -267,7 +267,7 @@ export function interpretedSheet(si: StoredInterpretation, fu: { asked: FollowUp
     else if (!required) rows.push({ key: f.key, value: '言及なし', original: '—', terms: [] });
     else rows.push({ key: f.key, value: '未回答', original: '—', terms: [], flag: { label: '未回答', tone: 'warn' }, required });
     if (f.id === 'aggravating') {
-      rows.push({ key: '痛みの強さ', value: si.pain === null ? '未回答' : `NRS ${si.pain} / 10`, original: si.pain === null ? '—' : `0〜10のスケールで「${si.pain}」を画面上で選択`, terms: [], required: true });
+      rows.push({ key: '症状の強さ', value: si.pain === null ? '未回答' : `${si.pain} / 10（0〜10の自己評価）`, original: si.pain === null ? '—' : `0〜10のスケールで「${si.pain}」を画面上で選択`, terms: [], required: true });
     }
   }
   const allergy = si.items.drugAllergy;

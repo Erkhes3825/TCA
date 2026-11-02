@@ -54,13 +54,17 @@ export interface FlowState {
   interp: InterpretedItems | null;
   /** 口述の解釈が終わった時点で決めた聞き足し。途中で変わらないよう固定する */
   fuIds: FollowUpId[] | null;
+  /** 確認画面で本人が書き直した内容。キーは確認画面の項目名 */
+  edits: Record<string, string>;
+  /** 書き直しを AI に反映している最中（確認画面） */
+  confirming: boolean;
 }
 
 const INITIAL: FlowState = {
   screen: 0, userLang: null, userRegion: null, manual: false,
   dept: 'im', age: 2, sex: 0, step: 0, fu: 0, fuAnswers: {}, pain: null, recording: false,
   live: {}, interim: '', speechError: null,
-  interpPhase: 'idle', interp: null, fuIds: null,
+  interpPhase: 'idle', interp: null, fuIds: null, edits: {}, confirming: false,
 };
 
 /** デモ用：マイクを押してから回答が入るまでの時間 */
@@ -149,6 +153,16 @@ export default function PatientFlow() {
       .catch(() => update({ interpPhase: 'done' }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interpretUrl, s.interpPhase, s.fu, followUps.length]);
+
+  // 確認画面で書き直しがあれば、訂正として AI にもう一度渡してから送る。失敗しても送信は止めない
+  const confirm = () => {
+    const corrections = Object.entries(s.edits).map(([q, a]) => ({ q, a }));
+    if (!interpretUrl || !useInterpret || corrections.length === 0) { go(4); return; }
+    update({ confirming: true });
+    interpret(interpretUrl, { lang, locale: speechLocale(lang, region), qa: [...speechQa(s, true), ...corrections] })
+      .then((items) => update({ interp: items, interpPhase: 'done', confirming: false, screen: 4 }))
+      .catch(() => update({ confirming: false, screen: 4 }));
+  };
 
   useEffect(() => {
     if (s.interpPhase === 'done' && s.interp) rememberInterpretation({
@@ -307,7 +321,12 @@ export default function PatientFlow() {
         />
       )}
       {s.screen === 3 && (
-        <ReviewStep turns={turns} followUps={followUps} fuAnswers={s.fuAnswers} liveVoice={speechUrl ? s.live : null} lang={lang} dept={s.dept} pain={s.pain} onConfirm={() => go(4)} onFix={() => go(2)} />
+        <ReviewStep
+          turns={turns} followUps={followUps} fuAnswers={s.fuAnswers} liveVoice={speechUrl ? s.live : null}
+          interp={useInterpret ? s.interp : null} lang={lang} dept={s.dept} pain={s.pain}
+          edits={s.edits} onEdit={(k, text) => setS((p) => ({ ...p, edits: { ...p.edits, [k]: text } }))} busy={s.confirming}
+          onConfirm={confirm} onFix={() => go(2)}
+        />
       )}
       {s.screen === 4 && <DoneStep onReset={reset} />}
     </div>

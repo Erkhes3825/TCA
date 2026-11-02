@@ -16,11 +16,11 @@ export interface InterpretedItem {
   terms: TermMap[];
 }
 
-/** api/src/functions/interpret.js の FIELDS と同じキー・同じ並び（痛みの強さはスケールで答えるので無い） */
+/** api/src/functions/interpret.js の FIELDS と同じキー・同じ並び（症状の強さはスケールで答えるので無い） */
 export const INTERPRET_FIELDS = [
   { id: 'chiefComplaint', key: '主訴' },
   { id: 'onset', key: '発症時期', followUp: 'onset' },
-  { id: 'painQuality', key: '痛みの性質' },
+  { id: 'symptomQuality', key: '症状の性質' },
   { id: 'aggravating', key: '増悪因子' },
   { id: 'associated', key: '随伴症状' },
   { id: 'fever', key: '発熱' },
@@ -45,8 +45,11 @@ export function coveredFollowUps(items: InterpretedItems | null): Set<FollowUpId
   return out;
 }
 
+/** 応答を待つ上限。超えたら失敗として扱い、聞き足しを全部聞く（問診を止めない） */
+const TIMEOUT_MS = 20000;
+
 export async function interpret(url: string, body: { lang: LangId; locale: string; qa: { q: string; a: string }[] }): Promise<InterpretedItems> {
-  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(TIMEOUT_MS) });
   if (!res.ok) throw new Error(`interpret ${res.status}`);
   const j = await res.json();
   if (!j || typeof j.items !== 'object') throw new Error('interpret: bad response');

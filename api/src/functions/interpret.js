@@ -14,7 +14,7 @@ const { app } = require('@azure/functions');
 const FIELDS = {
   chiefComplaint: '主訴（何に困って来たか）',
   onset: '発症時期（いつから。「昨夜から」「3日前から」など）',
-  painQuality: '痛みの性質（鋭い・鈍い・間欠的など）',
+  symptomQuality: '症状の性質（どんな感じか。痛みなら鋭い・鈍い・間欠的、咳なら乾いた・痰が絡むなど）',
   aggravating: '増悪・寛解因子（何をすると悪化・軽快するか）',
   associated: '随伴症状（吐き気・嘔吐・下痢など、主訴以外の症状。「ない」と言った症状も含める）',
   fever: '発熱（熱感・悪寒・測った体温。「ない」も含める）',
@@ -27,6 +27,8 @@ const FIELDS = {
 };
 
 const MAX_CHARS = 8000;
+/** Azure OpenAI の応答を待つ上限。アプリ側（20秒）より短くして、こちらのエラーを先に返す */
+const MODEL_TIMEOUT_MS = 15000;
 
 const item = {
   type: 'object',
@@ -70,6 +72,7 @@ const SYSTEM = [
   '- 患者が話した内容だけを使う。推測・補完・診断・病名の推定はしない。',
   '- 話していない項目は found=false にする。少しでも迷ったら found=false にして、医療者が聞き足せるようにする。',
   '- 「ない」と明言した場合は found=true で「なし」と書く（例: 下痢なし）。',
+  '- 同じ項目について後から言い直した回答（確認画面での訂正を含む）があれば、後の回答を採る。',
   '- evidence には根拠の発話を一字一句そのまま写す（翻訳しない、言い換えない）。',
   '- ja は日本の問診票の簡潔な書き方（例: 「昨夜から続く強い腹痛。右季肋部。」）。',
   '- 口語・方言・俗語・薬の現地名を医療用語にしたものは terms に入れる。',
@@ -107,18 +110,25 @@ app.http('interpret', {
     const transcript = qa.map((x, i) => `Q${i + 1}: ${x.q}\nA${i + 1}: ${x.a}`).join('\n\n');
     if (transcript.length > MAX_CHARS) return { status: 413, jsonBody: { error: 'too long' } };
 
-    const res = await fetch(`${endpoint}/openai/deployments/${encodeURIComponent(deployment)}/chat/completions?api-version=${encodeURIComponent(apiVersion)}`, {
-      method: 'POST',
-      headers: { 'api-key': key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: SYSTEM },
-          { role: 'user', content: `患者の言語: ${String(body.locale || body.lang || '不明')}\n\n${transcript}` },
-        ],
-        temperature: 0,
-        response_format: { type: 'json_schema', json_schema: { name: 'intake', strict: true, schema } },
-      }),
-    });
+    let res;
+    try {
+      res = await fetch(`${endpoint}/openai/deployments/${encodeURIComponent(deployment)}/chat/completions?api-version=${encodeURIComponent(apiVersion)}`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
+        headers: { 'api-key': key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: SYSTEM },
+            { role: 'user', content: `患者の言語: ${String(body.locale || body.lang || '不明')}\n\n${transcript}` },
+          ],
+          temperature: 0,
+          response_format: { type: 'json_schema', json_schema: { name: 'intake', strict: true, schema } },
+        }),
+      });
+    } catch (e) {
+      context.error(`chat/completions did not answer: ${e}`);
+      return { status: 504, jsonBody: { error: 'model timeout' } };
+    }
     if (!res.ok) {
       context.error(`chat/completions failed: ${res.status} ${(await res.text()).slice(0, 500)}`);
       return { status: 502, jsonBody: { error: 'model request failed' } };
