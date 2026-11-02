@@ -121,7 +121,7 @@ app.http('interpret', {
             { role: 'system', content: SYSTEM },
             { role: 'user', content: `患者の言語: ${String(body.locale || body.lang || '不明')}\n\n${transcript}` },
           ],
-          temperature: 0,
+          
           response_format: { type: 'json_schema', json_schema: { name: 'intake', strict: true, schema } },
         }),
       });
