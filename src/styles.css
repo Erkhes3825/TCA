@@ -99,7 +99,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid #1F6FD1; outline-offs
 .phone__bar { position: relative; flex: 0 0 auto; min-height: 3.5rem; padding: 0 12px; padding-top: env(safe-area-inset-top); display: flex; align-items: center; gap: 0.375rem; border-bottom: 1px solid var(--line); background: var(--surface); }
 .phone__title { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; padding-left: 0.5rem; }
 .phone__title strong { font-size: 1.0625rem; letter-spacing: .02em; }
-.phone__title span { font-size: 0.875rem; color: var(--muted); }
+.phone__title span { font-size: 0.875rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .phone__step { font-size: 0.875rem; color: var(--muted); padding-right: 0.25rem; white-space: nowrap; }
 .phone__progress { position: absolute; left: 0; right: 0; bottom: -1px; height: 4px; background: var(--line-2); }
 .phone__progress span { display: block; height: 100%; background: var(--accent); transition: width .25s; }
@@ -115,6 +115,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid #1F6FD1; outline-offs
 .text-size__opt[data-step='l'] { font-size: 22px; }
 .text-size__opt[data-step='xl'] { font-size: 28px; }
 .text-size-panel { flex: 0 0 auto; padding: 0.75rem 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.hint-panel { flex: 0 0 auto; padding: 0.75rem 16px; background: var(--ground-2); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 0.25rem; font-size: 1rem; line-height: 1.5; }
 .icon-btn--text { font-weight: 700; font-size: 1.0625rem; color: var(--accent); }
 .icon-btn--text[aria-expanded='true'] { background: var(--accent-soft); border-radius: 0.625rem; }
 
@@ -192,7 +193,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid #1F6FD1; outline-offs
   .chat { padding-left: 12px; padding-right: 12px; }
 }
 /* 大きな文字で行間が広すぎると、かえって行を追いにくい */
-html[data-text='xl'] :is(.bubble, .hint-box, .understood, .review dd, .done p, .gloss, .note) { line-height: 1.4; }
+html[data-text='xl'] :is(.bubble, .hint-box, .hint-panel, .understood, .review dd, .done p, .gloss, .note) { line-height: 1.4; }
 
 /* ===== pages (compare / clinician) ===== */
 .page { min-height: 100dvh; padding: 2.5rem 1rem 3.5rem; background: var(--ground); }

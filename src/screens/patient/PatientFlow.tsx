@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Gloss from '../../components/Gloss';
 import Icon from '../../components/Icon';
 import TextSizeControl from '../../components/TextSizeControl';
 import { getLang, type LangId } from '../../data/languages';
@@ -56,6 +57,7 @@ const FAKE_LISTEN_MS = 1400;
 export default function PatientFlow() {
   const [s, setS] = useState<FlowState>(INITIAL);
   const [sizeOpen, setSizeOpen] = useState(false);
+  const [hintOpen, setHintOpen] = useState(false);
   const update = (patch: Partial<FlowState>) => setS((prev) => ({ ...prev, ...patch }));
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(timer.current), []);
@@ -152,13 +154,24 @@ export default function PatientFlow() {
           <span>{t.appSubtitle}</span>
         </div>
         <span className="phone__step">{stepLabel}</span>
+        {/* 話し方のヒントは問診の画面だけ。常に出すと会話の場所を取るので、押したときだけ出す */}
+        {s.screen === 2 ? (
+          <button
+            type="button"
+            className="icon-btn icon-btn--text"
+            aria-label={t.hintLabel}
+            aria-expanded={hintOpen}
+            aria-controls="hint-panel"
+            onClick={() => { setHintOpen((o) => !o); setSizeOpen(false); }}
+          ><Icon name="help" size={22} /></button>
+        ) : null}
         <button
           type="button"
           className="icon-btn icon-btn--text"
           aria-label={t.textSize}
           aria-expanded={sizeOpen}
           aria-controls="text-size-panel"
-          onClick={() => setSizeOpen((o) => !o)}
+          onClick={() => { setSizeOpen((o) => !o); setHintOpen(false); }}
         >Aa</button>
         {s.screen < 4 ? (
           <div
@@ -175,6 +188,12 @@ export default function PatientFlow() {
       </header>
       {sizeOpen ? (
         <div id="text-size-panel" className="text-size-panel"><TextSizeControl /></div>
+      ) : null}
+      {hintOpen && s.screen === 2 ? (
+        <div id="hint-panel" className="hint-panel">
+          <strong>{t.hint}</strong>
+          <Gloss>普段の言葉・方言のままで大丈夫です。AIが医療者向けの言葉に整えます。</Gloss>
+        </div>
       ) : null}
 
       {s.screen === 0 && (

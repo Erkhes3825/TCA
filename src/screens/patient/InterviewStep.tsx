@@ -94,11 +94,6 @@ export default function InterviewStep({ turns, followUps, lang, step, fu, fuAnsw
   return (
     <div className="screen">
       <div className="screen__body chat">
-        <div className="hint-box">
-          <strong>{t.hint}</strong>
-          <Gloss>普段の言葉・方言のままで大丈夫です。AIが医療者向けの言葉に整えます。</Gloss>
-        </div>
-
         {turns.slice(0, step + 1).map((turn, i) => {
           const answered = i < step;
           return (
