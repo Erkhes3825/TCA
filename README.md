@@ -10,6 +10,7 @@
 
 `config.json` の `speechTokenUrl` に Azure Functions の URL を入れると、マイクを押したときに本物の音声認識が動きます（空ならデモのまま）。
 さらに `interpretUrl` も入れると、自由口述を Azure OpenAI が読んで問診票の項目に当てはめ、当てはまらなかった必須項目だけを聞き足します（空なら聞き足しを全部聞く）。
+Azure 全体の構成図（使うサービス・問診の流れ・AI が当てはめる項目の対応表・管理者の作業）：https://claude.ai/artifact/JsoZnSoiVfXAEVyJkfL3qC
 Azure 側の作り方は [`api/README.md`](api/README.md)。この機能を入れたあとの `docs/` は、`npm install` → `npm run build` で作り直す必要があります。
 
 

@@ -11,6 +11,8 @@ Web アプリ（GitHub Pages）から Azure を使うための、小さな中継
 スマホ（GitHub Pages） → この Function（キーはここだけ） → Azure AI Speech / Azure OpenAI
 ```
 
+構成図（問診の流れ・AI が当てはめる項目の対応表・作業の一覧つき）：https://claude.ai/artifact/JsoZnSoiVfXAEVyJkfL3qC
+
 **Speech のキーは、この Function の「アプリ設定」にだけ入れます。** `src/` や `docs/`、GitHub には絶対に書かない（リポジトリが公開だと、誰でも見えて、他人に使われて課金されます）。
 
 ## 1. Azure で作るもの
