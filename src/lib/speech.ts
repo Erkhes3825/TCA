@@ -3,6 +3,7 @@
 // 認識の設定は config.json の speechTokenUrl。空なら「デモ（台本どおりに再生）」のまま動く。
 import * as sdk from 'microsoft-cognitiveservices-speech-sdk';
 import { getLang, type LangId } from '../data/languages';
+import { loadConfig } from './config';
 
 /** languages.ts の regions と同じ並び。地域ごとの認識ロケール */
 const LOCALES: Record<LangId, string[]> = {
@@ -32,14 +33,9 @@ for (const [path, raw] of Object.entries(rawLists)) {
   PHRASES[locale] = raw.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith('#')).slice(0, 500);
 }
 
-let configPromise: Promise<string | null> | undefined;
 /** config.json の speechTokenUrl。無い・空・読めない（file:// で開いたとき等）なら null＝デモ */
 export function loadSpeechUrl(): Promise<string | null> {
-  configPromise ??= fetch(new URL('config.json', document.baseURI), { cache: 'no-store' })
-    .then((r) => (r.ok ? r.json() : null))
-    .then((j) => (j && typeof j.speechTokenUrl === 'string' && j.speechTokenUrl.trim() ? j.speechTokenUrl.trim() : null))
-    .catch(() => null);
-  return configPromise;
+  return loadConfig().then((c) => c.speechTokenUrl);
 }
 
 let tokenCache: { token: string; region: string; exp: number } | null = null;

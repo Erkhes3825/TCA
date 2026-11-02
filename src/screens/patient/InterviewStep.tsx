@@ -24,6 +24,8 @@ interface Props {
   recording: boolean;
   /** true なら本物の音声認識（Azure）、false ならデモ */
   live: boolean;
+  /** AI が口述を解釈している最中（聞き足す項目を決めている・最後のまとめ） */
+  analyzing: boolean;
   /** 認識結果。キーは 't<番号>' と 'f<聞き足しのid>' */
   liveVoice: Record<string, string>;
   /** 話している途中の認識結果 */
@@ -62,7 +64,7 @@ const SPEECH_ERROR_TEXT: Record<SpeechErrorKind, { en: string; ja: string }> = {
   empty: { en: "We couldn't hear you. Please try again.", ja: '聞き取れませんでした。もう一度お試しください。' },
 };
 
-export default function InterviewStep({ turns, followUps, lang, step, fu, fuAnswers, pain, recording, live, liveVoice, interim, speechError, onTapMic, onPickPain, onAnswer, onNext }: Props) {
+export default function InterviewStep({ turns, followUps, lang, step, fu, fuAnswers, pain, recording, live, analyzing, liveVoice, interim, speechError, onTapMic, onPickPain, onAnswer, onNext }: Props) {
   const t = useUi();
   const ft = FOLLOW_UP_TEXT[lang];
   const ftJa = FOLLOW_UP_TEXT.ja;
@@ -128,8 +130,8 @@ export default function InterviewStep({ turns, followUps, lang, step, fu, fuAnsw
                     <span>{ft.q[f.id]}</span>
                     <Gloss>{ftJa.q[f.id]}</Gloss>
                   </div>
-                  {a === 'voice' && isVoiceId(f.id)
-                    ? (live ? <VoiceAnswerView answer={liveVoice[`f${f.id}`]} answerLang={answerLang} /> : <VoiceAnswerView {...getVoiceAnswer(lang, f.id)} answerLang={answerLang} />)
+                  {a === 'voice'
+                    ? (live ? <VoiceAnswerView answer={liveVoice[`f${f.id}`]} answerLang={answerLang} /> : isVoiceId(f.id) ? <VoiceAnswerView {...getVoiceAnswer(lang, f.id)} answerLang={answerLang} /> : null)
                     : null}
                   {label !== null ? <div className="bubble bubble--a bubble--strong">{label}</div> : null}
                 </div>
@@ -142,7 +144,12 @@ export default function InterviewStep({ turns, followUps, lang, step, fu, fuAnsw
       </div>
 
       <footer className="screen__foot screen__foot--white">
-        {done ? (
+        {analyzing ? (
+          <div className="analyzing" role="status">
+            <span>{t.analyzing}</span>
+            <Gloss>AIが回答を読み、問診票の項目に当てはめています</Gloss>
+          </div>
+        ) : done ? (
           <button type="button" className="btn-primary" onClick={onNext}>{t.reviewAnswers}</button>
         ) : currentFu ? (
           <div className="stack-10">

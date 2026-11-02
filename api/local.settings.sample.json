@@ -5,6 +5,9 @@
     "AzureWebJobsStorage": "",
     "SPEECH_KEY": "（Azure の Speech リソースのキー。ここは自分のパソコンだけ。GitHub に上げない）",
     "SPEECH_REGION": "japaneast",
+    "AZURE_OPENAI_ENDPOINT": "https://<Azure OpenAI のリソース名>.openai.azure.com",
+    "AZURE_OPENAI_KEY": "（Azure OpenAI のキー。ここは自分のパソコンだけ。GitHub に上げない）",
+    "AZURE_OPENAI_DEPLOYMENT": "（モデルをデプロイしたときに付けた名前）",
     "ALLOWED_ORIGINS": "http://localhost:5173"
   },
   "Host": { "CORS": "http://localhost:5173" }

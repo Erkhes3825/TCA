@@ -43,6 +43,8 @@ export interface UiStrings {
   hint: string;
   /** 右上の「?」ボタンの読み上げ名。押すと hint を出す */
   hintLabel: string;
+  /** AI が口述を解釈しているあいだの表示 */
+  analyzing: string;
   weUnderstood: string;
   painOutOf: (n: number) => string;
   painAria: (n: number) => string;
@@ -97,6 +99,7 @@ const en: UiStrings = {
   sexes: ['Female', 'Male', 'Prefer not to say'],
   hint: 'Speak naturally. Slang, local words and your own way of describing it are all fine.',
   hintLabel: 'How to answer',
+  analyzing: 'Checking your answers…',
   weUnderstood: 'WE UNDERSTOOD',
   painOutOf: (n) => `${n} out of 10`,
   painAria: (n) => `Pain ${n}`,
@@ -155,6 +158,7 @@ const zh: UiStrings = {
   sexes: ['女', '男', '不愿透露'],
   hint: '请自然地说。口语、方言、您自己的描述方式都可以。',
   hintLabel: '回答方法',
+  analyzing: '正在整理您的回答…',
   weUnderstood: '我们理解为',
   painOutOf: (n) => `${n} 分（满分 10 分）`,
   painAria: (n) => `疼痛 ${n} 分`,
@@ -213,6 +217,7 @@ const vi: UiStrings = {
   sexes: ['Nữ', 'Nam', 'Không muốn trả lời'],
   hint: 'Cứ nói tự nhiên. Tiếng lóng, từ địa phương hay cách diễn tả của riêng bạn đều được.',
   hintLabel: 'Cách trả lời',
+  analyzing: 'Đang xem lại câu trả lời của bạn…',
   weUnderstood: 'CHÚNG TÔI HIỂU LÀ',
   painOutOf: (n) => `${n} trên 10`,
   painAria: (n) => `Mức đau ${n}`,
@@ -271,6 +276,7 @@ const ko: UiStrings = {
   sexes: ['여성', '남성', '밝히고 싶지 않음'],
   hint: '편하게 말씀하세요. 속어, 사투리, 본인만의 표현도 괜찮습니다.',
   hintLabel: '답변 방법',
+  analyzing: '답변을 정리하고 있습니다…',
   weUnderstood: '이렇게 이해했습니다',
   painOutOf: (n) => `10점 중 ${n}점`,
   painAria: (n) => `통증 ${n}점`,
@@ -329,6 +335,7 @@ const pt: UiStrings = {
   sexes: ['Feminino', 'Masculino', 'Prefiro não dizer'],
   hint: 'Fale naturalmente. Gírias, palavras regionais e o seu jeito de descrever estão ótimos.',
   hintLabel: 'Como responder',
+  analyzing: 'Organizando suas respostas…',
   weUnderstood: 'O QUE ENTENDEMOS',
   painOutOf: (n) => `${n} de 10`,
   painAria: (n) => `Dor ${n}`,
@@ -387,6 +394,7 @@ const es: UiStrings = {
   sexes: ['Mujer', 'Hombre', 'Prefiero no decirlo'],
   hint: 'Hable con naturalidad. Puede usar palabras coloquiales, regionales o su propia forma de describirlo.',
   hintLabel: 'Cómo responder',
+  analyzing: 'Revisando sus respuestas…',
   weUnderstood: 'LO QUE ENTENDIMOS',
   painOutOf: (n) => `${n} de 10`,
   painAria: (n) => `Dolor ${n}`,
@@ -445,6 +453,7 @@ const tl: UiStrings = {
   sexes: ['Babae', 'Lalaki', 'Ayaw kong sabihin'],
   hint: 'Magsalita nang natural. Puwede ang slang, salitang lokal, at sarili mong paraan ng paglalarawan.',
   hintLabel: 'Paano sumagot',
+  analyzing: 'Inaayos ang iyong mga sagot…',
   weUnderstood: 'ANG NAINTINDIHAN NAMIN',
   painOutOf: (n) => `${n} sa 10`,
   painAria: (n) => `Sakit ${n}`,
@@ -503,6 +512,7 @@ const id: UiStrings = {
   sexes: ['Perempuan', 'Laki-laki', 'Tidak ingin menyebutkan'],
   hint: 'Bicaralah dengan santai. Bahasa gaul, kata daerah, dan cara Anda sendiri menjelaskan tidak masalah.',
   hintLabel: 'Cara menjawab',
+  analyzing: 'Sedang merapikan jawaban Anda…',
   weUnderstood: 'YANG KAMI PAHAMI',
   painOutOf: (n) => `${n} dari 10`,
   painAria: (n) => `Nyeri ${n}`,
@@ -561,6 +571,7 @@ const mn: UiStrings = {
   sexes: ['Эмэгтэй', 'Эрэгтэй', 'Хэлэхийг хүсэхгүй'],
   hint: 'Чөлөөтэй ярина уу. Ярианы үг, нутгийн үг, өөрийнхөөрөө тайлбарлах нь бүгд болно.',
   hintLabel: 'Хэрхэн хариулах',
+  analyzing: 'Таны хариултыг цэгцэлж байна…',
   weUnderstood: 'БИДНИЙ ОЙЛГОСНООР',
   painOutOf: (n) => `10-аас ${n}`,
   painAria: (n) => `Өвдөлт ${n}`,
@@ -619,6 +630,7 @@ const ja: UiStrings = {
   sexes: ['女性', '男性', '答えたくない'],
   hint: '普段の言葉・方言のままで大丈夫です。',
   hintLabel: '答え方',
+  analyzing: '回答を整理しています…',
   weUnderstood: 'こう理解しました',
   painOutOf: (n) => `10段階中 ${n}`,
   painAria: (n) => `痛み ${n}`,

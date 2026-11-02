@@ -32,7 +32,7 @@ export default function ReviewStep({ turns, followUps, fuAnswers, liveVoice, lan
     ...followUps.flatMap((f) => {
       const a = fuAnswers[f.id];
       if (a === undefined) return [];
-      const v = a === 'voice' && isVoiceId(f.id) ? (liveVoice ? (liveVoice[`f${f.id}`] ?? '') : getVoiceAnswer(lang, f.id).understood) : (answerLabel(ft, f.id, a, true) ?? '');
+      const v = a === 'voice' ? (liveVoice ? (liveVoice[`f${f.id}`] ?? '') : isVoiceId(f.id) ? getVoiceAnswer(lang, f.id).understood : '') : (answerLabel(ft, f.id, a, true) ?? '');
       return [{ k: ft.keys[f.id], v }];
     }),
   ];

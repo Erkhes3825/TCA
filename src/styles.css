@@ -115,6 +115,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid #1F6FD1; outline-offs
 .text-size__opt[data-step='l'] { font-size: 22px; }
 .text-size__opt[data-step='xl'] { font-size: 28px; }
 .text-size-panel { flex: 0 0 auto; padding: 0.75rem 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.analyzing { min-height: 3rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.25rem; text-align: center; font-weight: 700; }
 .hint-panel { flex: 0 0 auto; padding: 0.75rem 16px; background: var(--ground-2); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 0.25rem; font-size: 1rem; line-height: 1.5; }
 .icon-btn--text { font-weight: 700; font-size: 1.0625rem; color: var(--accent); }
 .icon-btn--text[aria-expanded='true'] { background: var(--accent-soft); border-radius: 0.625rem; }

@@ -3,14 +3,16 @@ import Gloss from '../../components/Gloss';
 import Icon from '../../components/Icon';
 import TextSizeControl from '../../components/TextSizeControl';
 import { getLang, type LangId } from '../../data/languages';
-import { getTurns } from '../../data/interview';
-import { activeFollowUps, type FollowUpAnswer, type FollowUpAnswers } from '../../data/followUps';
+import { DEPARTMENT_IDS, getTurns } from '../../data/interview';
+import { FOLLOW_UPS, FOLLOW_UP_TEXT, ONSET_FOLLOW_UP, activeFollowUps, type FollowUpAnswer, type FollowUpAnswers, type FollowUpDef, type FollowUpId } from '../../data/followUps';
 import type { DeptId } from '../../data/ui';
 import { UI } from '../../data/ui';
 import { UiLangProvider, rememberCaseLang, rememberFollowUps } from '../../lib/uiLang';
 import { detectLocale, readDeviceLocales, readFormatCountry } from '../../lib/detectLocale';
 import { SIMULATED_LOCALE } from '../../lib/params';
-import { SpeechError, loadSpeechUrl, speechLocale, startListening, type SpeechErrorKind, type SpeechSession } from '../../lib/speech';
+import { loadConfig } from '../../lib/config';
+import { coveredFollowUps, interpret, rememberInterpretation, type InterpretedItems } from '../../lib/interpret';
+import { SpeechError, speechLocale, startListening, type SpeechErrorKind, type SpeechSession } from '../../lib/speech';
 import LanguageStep from './LanguageStep';
 import BasicsStep from './BasicsStep';
 import InterviewStep from './InterviewStep';
@@ -43,12 +45,22 @@ export interface FlowState {
   /** 話している途中の認識結果 */
   interim: string;
   speechError: SpeechErrorKind | null;
+  /**
+   * 自由口述の AI 解釈（config.json の interpretUrl があり、本物の音声認識のときだけ）。
+   * idle → narrative（口述を解釈中）→ asking（聞き足し中）→ final（聞き足しの声の回答も含めて解釈中）→ done
+   */
+  interpPhase: 'idle' | 'narrative' | 'asking' | 'final' | 'done';
+  /** 最後に成功した解釈。失敗したら null のまま（聞き足しは全部聞く） */
+  interp: InterpretedItems | null;
+  /** 口述の解釈が終わった時点で決めた聞き足し。途中で変わらないよう固定する */
+  fuIds: FollowUpId[] | null;
 }
 
 const INITIAL: FlowState = {
   screen: 0, userLang: null, userRegion: null, manual: false,
   dept: 'im', age: 2, sex: 0, step: 0, fu: 0, fuAnswers: {}, pain: null, recording: false,
   live: {}, interim: '', speechError: null,
+  interpPhase: 'idle', interp: null, fuIds: null,
 };
 
 /** デモ用：マイクを押してから回答が入るまでの時間 */
@@ -62,9 +74,14 @@ export default function PatientFlow() {
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
-  // config.json に speechTokenUrl があれば本物の音声認識（Azure）、無ければデモ（台本再生）
+  // config.json に speechTokenUrl があれば本物の音声認識（Azure）、無ければデモ（台本再生）。
+  // interpretUrl もあれば、口述を AI で問診票の項目に当てはめ、当てはまらなかった項目だけを聞き足す
   const [speechUrl, setSpeechUrl] = useState<string | null>(null);
-  useEffect(() => { loadSpeechUrl().then(setSpeechUrl); }, []);
+  const [interpretUrl, setInterpretUrl] = useState<string | null>(null);
+  useEffect(() => { loadConfig().then((c) => { setSpeechUrl(c.speechTokenUrl); setInterpretUrl(c.interpretUrl); }); }, []);
+  const useInterpret = speechUrl !== null && interpretUrl !== null;
+  // 前の回の解釈が医療者画面に残らないようにする
+  useEffect(() => { rememberInterpretation(null); }, []);
   const session = useRef<SpeechSession | null>(null);
   useEffect(() => () => { void session.current?.stop(); }, []);
 
@@ -89,8 +106,60 @@ export default function PatientFlow() {
     : baseTurns), [baseTurns, speechUrl, s.live]);
   // 医療者画面のサンプルを、患者が選んだ言語に合わせる
   useEffect(() => { rememberCaseLang(lang); }, [lang]);
-  // 聞き足す項目は年齢・性別で変わる（妊娠・授乳）
-  const followUps = useMemo(() => activeFollowUps({ age: s.age, sex: s.sex }), [s.age, s.sex]);
+  // 聞き足す項目は年齢・性別で変わる（妊娠）。AI の解釈を使うときは、口述で当てはまった項目を除く
+  const followUps = useMemo((): FollowUpDef[] => {
+    if (s.fuIds) return s.fuIds.map((id) => [ONSET_FOLLOW_UP, ...FOLLOW_UPS].find((f) => f.id === id)!);
+    // 口述の解釈が終わるまでは聞き足しを出さない
+    if (useInterpret) return [];
+    return activeFollowUps({ age: s.age, sex: s.sex });
+  }, [s.fuIds, useInterpret, s.age, s.sex]);
+
+  const speechQa = (p: FlowState, withFollowUps: boolean) => {
+    const ft = FOLLOW_UP_TEXT[lang];
+    const qa = baseTurns.flatMap((turn, i) => (turn.kind === 'voice' && p.live[`t${i}`] ? [{ q: turn.q, a: p.live[`t${i}`] }] : []));
+    if (withFollowUps) {
+      for (const f of followUps) if (p.live[`f${f.id}`]) qa.push({ q: ft.q[f.id], a: p.live[`f${f.id}`] });
+    }
+    return qa;
+  };
+
+  // 口述が終わったら解釈して、聞き足す項目を決める。失敗したら全部聞く
+  useEffect(() => {
+    if (!useInterpret || !interpretUrl || s.screen !== 2 || s.interpPhase !== 'idle' || s.step < turns.length) return;
+    update({ interpPhase: 'narrative' });
+    const base = activeFollowUps({ age: s.age, sex: s.sex });
+    interpret(interpretUrl, { lang, locale: speechLocale(lang, region), qa: speechQa(s, false) })
+      .then((items) => {
+        const covered = coveredFollowUps(items);
+        const ids = [...(items.onset?.found ? [] : [ONSET_FOLLOW_UP.id]), ...base.map((f) => f.id).filter((id) => !covered.has(id))];
+        update({ interpPhase: 'asking', interp: items, fuIds: ids });
+      })
+      .catch(() => update({ interpPhase: 'asking', fuIds: [ONSET_FOLLOW_UP.id, ...base.map((f) => f.id)] }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useInterpret, interpretUrl, s.screen, s.interpPhase, s.step, turns.length]);
+
+  // 聞き足しが終わったら、声で答えた聞き足しも含めてもう一度解釈する（医療者画面の内容になる）
+  useEffect(() => {
+    if (!interpretUrl || s.interpPhase !== 'asking' || s.fu < followUps.length) return;
+    const voiced = followUps.some((f) => s.live[`f${f.id}`]);
+    if (!voiced) { update({ interpPhase: 'done' }); return; }
+    update({ interpPhase: 'final' });
+    interpret(interpretUrl, { lang, locale: speechLocale(lang, region), qa: speechQa(s, true) })
+      .then((items) => update({ interpPhase: 'done', interp: items }))
+      .catch(() => update({ interpPhase: 'done' }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [interpretUrl, s.interpPhase, s.fu, followUps.length]);
+
+  useEffect(() => {
+    if (s.interpPhase === 'done' && s.interp) rememberInterpretation({
+      lang, locale: speechLocale(lang, region), items: s.interp, pain: s.pain,
+      meta: [
+        { k: '希望診療科', v: DEPARTMENT_IDS.find((d) => d.id === s.dept)?.ja ?? '' },
+        { k: '年齢', v: UI.ja.ages[s.age] },
+        { k: '性別', v: UI.ja.sexes[s.sex] },
+      ],
+    });
+  }, [s.interpPhase, s.interp, s.pain, s.dept, s.age, s.sex, lang, region]);
   useEffect(() => { rememberFollowUps({ asked: followUps.map((f) => f.id), answers: s.fuAnswers }); }, [followUps, s.fuAnswers]);
   const stepLabel = s.screen < 4 ? t.step(s.screen + 1) : '';
 
@@ -138,6 +207,7 @@ export default function PatientFlow() {
     void session.current?.stop();
     session.current = null;
     setS(INITIAL);
+    rememberInterpretation(null);
   };
 
   return (
@@ -226,6 +296,7 @@ export default function PatientFlow() {
           pain={s.pain}
           recording={s.recording}
           live={speechUrl !== null}
+          analyzing={s.interpPhase === 'narrative' || s.interpPhase === 'final'}
           liveVoice={s.live}
           interim={s.interim}
           speechError={s.speechError}

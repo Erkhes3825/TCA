@@ -7,7 +7,7 @@ import type { LangId } from './languages';
 import type { TermMap } from './interview';
 
 export type FollowUpId =
-  | 'onsetConfirm' | 'onsetMode' | 'course' | 'selfCare' | 'fatigue'
+  | 'onset' | 'onsetConfirm' | 'onsetMode' | 'course' | 'selfCare' | 'fatigue'
   | 'bloodThinner' | 'allergyDetail' | 'foodLatex' | 'illness' | 'surgery'
   | 'pregnancy' | 'breastfeeding' | 'smoking' | 'alcohol' | 'travel'
   | 'heightWeight' | 'insurance' | 'firstVisit' | 'interpreter';
@@ -54,6 +54,12 @@ export const FOLLOW_UPS: FollowUpDef[] = [
   { id: 'pregnancy', kind: 'choice', options: ['yes', 'no', 'unknown', 'noAnswer'], when: childbearing },
 ];
 
+/**
+ * 発症時期を自由口述から拾えなかったときだけ聞く（AI の解釈を使うとき。lib/interpret.ts）。
+ * デモ（台本）では口述に「昨夜から」が入っているので聞かない
+ */
+export const ONSET_FOLLOW_UP: FollowUpDef = { id: 'onset', kind: 'voice', options: ['dontRemember'] };
+
 export function activeFollowUps(b: { age: number; sex: number }): FollowUpDef[] {
   return FOLLOW_UPS.filter((f) => !f.when || f.when(b));
 }
@@ -81,6 +87,7 @@ export interface FollowUpText {
 const en: FollowUpText = {
   intro: 'Thank you. Just a few more short questions.',
   q: {
+    onset: 'When did it start? For example, “since last night” or “three days ago”.',
     onsetConfirm: 'We heard: “since last night”. Is that right?',
     onsetMode: 'Did it come on suddenly, or build up gradually?',
     course: 'Compared with when it started, how is it now?',
@@ -121,7 +128,7 @@ const en: FollowUpText = {
   weight: 'Weight (kg)',
   next: 'Next',
   keys: {
-    onsetConfirm: 'When it started', onsetMode: 'How it started', course: 'Since it started',
+    onset: 'When it started', onsetConfirm: 'When it started', onsetMode: 'How it started', course: 'Since it started',
     selfCare: 'What you tried', fatigue: 'Energy and appetite', bloodThinner: 'Blood thinners',
     allergyDetail: 'Medicine reaction', foodLatex: 'Food or latex allergy', illness: 'Illnesses',
     surgery: 'Surgery or hospital stays', pregnancy: 'Chance of pregnancy', breastfeeding: 'Breastfeeding',
@@ -135,6 +142,7 @@ const en: FollowUpText = {
 const zh: FollowUpText = {
   intro: '谢谢您。接下来还有几个简短的问题。',
   q: {
+    onset: '是从什么时候开始的？比如“从昨天晚上开始”“三天前”。',
     onsetConfirm: '我们听到的是：“从昨天晚上开始”。对吗？',
     onsetMode: '是突然开始的，还是慢慢加重的？',
     course: '和刚开始的时候相比，现在怎么样？',
@@ -175,7 +183,7 @@ const zh: FollowUpText = {
   weight: '体重（kg）',
   next: '下一步',
   keys: {
-    onsetConfirm: '开始时间', onsetMode: '开始方式', course: '之后的变化',
+    onset: '开始时间', onsetConfirm: '开始时间', onsetMode: '开始方式', course: '之后的变化',
     selfCare: '已采取的措施', fatigue: '体力和食欲', bloodThinner: '抗凝血药',
     allergyDetail: '药物反应', foodLatex: '食物或乳胶过敏', illness: '疾病史',
     surgery: '手术或住院', pregnancy: '怀孕的可能', breastfeeding: '哺乳',
@@ -189,6 +197,7 @@ const zh: FollowUpText = {
 const vi: FollowUpText = {
   intro: 'Cảm ơn bạn. Chỉ còn vài câu hỏi ngắn nữa.',
   q: {
+    onset: 'Bắt đầu từ khi nào? Ví dụ: “từ tối qua” hoặc “ba ngày trước”.',
     onsetConfirm: 'Chúng tôi nghe là: “từ tối qua”. Có đúng không?',
     onsetMode: 'Triệu chứng bắt đầu đột ngột, hay nặng dần lên?',
     course: 'So với lúc mới bắt đầu, bây giờ thế nào?',
@@ -229,7 +238,7 @@ const vi: FollowUpText = {
   weight: 'Cân nặng (kg)',
   next: 'Tiếp',
   keys: {
-    onsetConfirm: 'Thời điểm bắt đầu', onsetMode: 'Cách bắt đầu', course: 'Diễn biến',
+    onset: 'Thời điểm bắt đầu', onsetConfirm: 'Thời điểm bắt đầu', onsetMode: 'Cách bắt đầu', course: 'Diễn biến',
     selfCare: 'Đã tự xử lý', fatigue: 'Thể lực và ăn uống', bloodThinner: 'Thuốc chống đông',
     allergyDetail: 'Phản ứng với thuốc', foodLatex: 'Dị ứng thức ăn, cao su', illness: 'Bệnh đã/đang mắc',
     surgery: 'Phẫu thuật, nằm viện', pregnancy: 'Khả năng mang thai', breastfeeding: 'Cho con bú',
@@ -243,6 +252,7 @@ const vi: FollowUpText = {
 const ko: FollowUpText = {
   intro: '감사합니다. 짧은 질문 몇 가지만 더 드릴게요.',
   q: {
+    onset: '언제부터 그랬습니까? 예: “어젯밤부터”, “사흘 전부터”.',
     onsetConfirm: '“어젯밤부터”라고 들었습니다. 맞습니까?',
     onsetMode: '갑자기 시작됐나요, 아니면 점점 심해졌나요?',
     course: '처음 시작됐을 때와 비교해서 지금은 어떤가요?',
@@ -283,7 +293,7 @@ const ko: FollowUpText = {
   weight: '몸무게(kg)',
   next: '다음',
   keys: {
-    onsetConfirm: '시작 시기', onsetMode: '시작 양상', course: '경과',
+    onset: '시작 시기', onsetConfirm: '시작 시기', onsetMode: '시작 양상', course: '경과',
     selfCare: '스스로 한 조치', fatigue: '기운과 식욕', bloodThinner: '혈액 응고 억제제',
     allergyDetail: '약 부작용', foodLatex: '음식·라텍스 알레르기', illness: '병력',
     surgery: '수술·입원', pregnancy: '임신 가능성', breastfeeding: '수유',
@@ -297,6 +307,7 @@ const ko: FollowUpText = {
 const pt: FollowUpText = {
   intro: 'Obrigado. Só mais algumas perguntas rápidas.',
   q: {
+    onset: 'Quando começou? Por exemplo, “desde ontem à noite” ou “há três dias”.',
     onsetConfirm: 'Entendemos: “desde ontem à noite”. Está certo?',
     onsetMode: 'Começou de repente ou foi piorando aos poucos?',
     course: 'Comparado a quando começou, como está agora?',
@@ -337,7 +348,7 @@ const pt: FollowUpText = {
   weight: 'Peso (kg)',
   next: 'Próximo',
   keys: {
-    onsetConfirm: 'Quando começou', onsetMode: 'Como começou', course: 'Evolução',
+    onset: 'Quando começou', onsetConfirm: 'Quando começou', onsetMode: 'Como começou', course: 'Evolução',
     selfCare: 'O que já tentou', fatigue: 'Disposição e apetite', bloodThinner: 'Anticoagulante',
     allergyDetail: 'Reação a remédio', foodLatex: 'Alergia a alimento ou látex', illness: 'Doenças',
     surgery: 'Cirurgia ou internação', pregnancy: 'Chance de gravidez', breastfeeding: 'Amamentação',
@@ -351,6 +362,7 @@ const pt: FollowUpText = {
 const es: FollowUpText = {
   intro: 'Gracias. Solo unas preguntas cortas más.',
   q: {
+    onset: '¿Cuándo empezó? Por ejemplo, “desde anoche” o “hace tres días”.',
     onsetConfirm: 'Entendimos: “desde anoche”. ¿Es correcto?',
     onsetMode: '¿Empezó de repente o fue empeorando poco a poco?',
     course: 'Comparado con cuando empezó, ¿cómo está ahora?',
@@ -391,7 +403,7 @@ const es: FollowUpText = {
   weight: 'Peso (kg)',
   next: 'Siguiente',
   keys: {
-    onsetConfirm: 'Cuándo empezó', onsetMode: 'Cómo empezó', course: 'Evolución',
+    onset: 'Cuándo empezó', onsetConfirm: 'Cuándo empezó', onsetMode: 'Cómo empezó', course: 'Evolución',
     selfCare: 'Lo que ha probado', fatigue: 'Energía y apetito', bloodThinner: 'Anticoagulantes',
     allergyDetail: 'Reacción a medicinas', foodLatex: 'Alergia a alimentos o látex', illness: 'Enfermedades',
     surgery: 'Operaciones u hospitalizaciones', pregnancy: 'Posibilidad de embarazo', breastfeeding: 'Lactancia',
@@ -405,6 +417,7 @@ const es: FollowUpText = {
 const tl: FollowUpText = {
   intro: 'Salamat po. Ilang maikling tanong na lang po.',
   q: {
+    onset: 'Kailan po ito nagsimula? Halimbawa, “mula kagabi” o “tatlong araw na ang nakalipas”.',
     onsetConfirm: 'Ang narinig namin: “mula kagabi”. Tama po ba?',
     onsetMode: 'Biglaan po ba itong nagsimula, o unti-unting lumala?',
     course: 'Kumpara noong nagsimula, kumusta na po ngayon?',
@@ -445,7 +458,7 @@ const tl: FollowUpText = {
   weight: 'Timbang (kg)',
   next: 'Susunod',
   keys: {
-    onsetConfirm: 'Kailan nagsimula', onsetMode: 'Paano nagsimula', course: 'Takbo mula nagsimula',
+    onset: 'Kailan nagsimula', onsetConfirm: 'Kailan nagsimula', onsetMode: 'Paano nagsimula', course: 'Takbo mula nagsimula',
     selfCare: 'Mga ginawa na', fatigue: 'Lakas at gana', bloodThinner: 'Pampalabnaw ng dugo',
     allergyDetail: 'Reaksyon sa gamot', foodLatex: 'Allergy sa pagkain o latex', illness: 'Mga sakit',
     surgery: 'Operasyon o pagka-confine', pregnancy: 'Posibilidad ng pagbubuntis', breastfeeding: 'Pagpapasuso',
@@ -459,6 +472,7 @@ const tl: FollowUpText = {
 const id: FollowUpText = {
   intro: 'Terima kasih. Tinggal beberapa pertanyaan singkat lagi.',
   q: {
+    onset: 'Sejak kapan mulainya? Misalnya, “sejak tadi malam” atau “tiga hari lalu”.',
     onsetConfirm: 'Yang kami dengar: “sejak tadi malam”. Benar?',
     onsetMode: 'Apakah mulainya tiba-tiba, atau makin lama makin parah?',
     course: 'Dibandingkan saat mulai, bagaimana sekarang?',
@@ -499,7 +513,7 @@ const id: FollowUpText = {
   weight: 'Berat (kg)',
   next: 'Lanjut',
   keys: {
-    onsetConfirm: 'Kapan mulai', onsetMode: 'Cara mulai', course: 'Perkembangan',
+    onset: 'Kapan mulai', onsetConfirm: 'Kapan mulai', onsetMode: 'Cara mulai', course: 'Perkembangan',
     selfCare: 'Yang sudah dicoba', fatigue: 'Tenaga dan nafsu makan', bloodThinner: 'Pengencer darah',
     allergyDetail: 'Reaksi obat', foodLatex: 'Alergi makanan atau lateks', illness: 'Riwayat penyakit',
     surgery: 'Operasi atau rawat inap', pregnancy: 'Kemungkinan hamil', breastfeeding: 'Menyusui',
@@ -513,6 +527,7 @@ const id: FollowUpText = {
 const mn: FollowUpText = {
   intro: 'Баярлалаа. Хэдэн богино асуулт үлдлээ.',
   q: {
+    onset: 'Хэзээнээс эхэлсэн бэ? Жишээ нь, “өчигдөр оройноос”, “гурван өдрийн өмнөөс”.',
     onsetConfirm: '“Өчигдөр оройноос” гэж ойлголоо. Зөв үү?',
     onsetMode: 'Гэнэт эхэлсэн үү, эсвэл аажмаар хүчтэй болсон уу?',
     course: 'Эхэлсэн үетэйгээ харьцуулахад одоо ямар байна вэ?',
@@ -553,7 +568,7 @@ const mn: FollowUpText = {
   weight: 'Жин (кг)',
   next: 'Дараах',
   keys: {
-    onsetConfirm: 'Эхэлсэн хугацаа', onsetMode: 'Хэрхэн эхэлсэн', course: 'Явц',
+    onset: 'Эхэлсэн хугацаа', onsetConfirm: 'Эхэлсэн хугацаа', onsetMode: 'Хэрхэн эхэлсэн', course: 'Явц',
     selfCare: 'Авсан арга хэмжээ', fatigue: 'Тэнхээ, хоолны дуршил', bloodThinner: 'Цус шингэлэх эм',
     allergyDetail: 'Эмийн урвал', foodLatex: 'Хоол хүнс, резиний харшил', illness: 'Өвчний түүх',
     surgery: 'Мэс засал, хэвтэн эмчлүүлсэн', pregnancy: 'Жирэмсэн байх магадлал', breastfeeding: 'Хөхүүл эсэх',
@@ -567,6 +582,7 @@ const mn: FollowUpText = {
 const ja: FollowUpText = {
   intro: 'ありがとうございます。あといくつか、短い質問をさせてください。',
   q: {
+    onset: 'いつからですか？（例：「昨日の夜から」「3日前から」）',
     onsetConfirm: '「昨日の夜から」と聞き取りました。合っていますか？',
     onsetMode: '急に始まりましたか？それとも、だんだん強くなりましたか？',
     course: '始まったときと比べて、今はどうですか？',
@@ -607,7 +623,7 @@ const ja: FollowUpText = {
   weight: '体重（kg）',
   next: '次へ',
   keys: {
-    onsetConfirm: 'いつから', onsetMode: '始まり方', course: '経過',
+    onset: 'いつから', onsetConfirm: 'いつから', onsetMode: '始まり方', course: '経過',
     selfCare: '自分でした対処', fatigue: 'だるさ・食欲', bloodThinner: '血をサラサラにする薬',
     allergyDetail: '薬で具合が悪くなったこと', foodLatex: '食べ物・ゴムのアレルギー', illness: '病気',
     surgery: '手術・入院', pregnancy: '妊娠の可能性', breastfeeding: '授乳',

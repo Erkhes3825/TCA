@@ -6,6 +6,8 @@ import {
   FOLLOW_UPS, FOLLOW_UP_TEXT, SAMPLE_FOLLOW_UP_ANSWERS, getVoiceAnswer, isVoiceId,
   type FollowUpAnswers, type FollowUpId, type OptId, type VoiceId,
 } from './followUps';
+import { getLang, type LangId } from './languages';
+import { INTERPRET_FIELDS, type StoredInterpretation } from '../lib/interpret';
 
 export type CaseLang = 'en' | 'zh' | 'vi';
 
@@ -157,8 +159,8 @@ export const CASE_LANGS: CaseLang[] = ['en', 'zh', 'vi'];
 /** 聞き足しのうち、サンプル症例の自由口述で拾えたため聞いていない項目 */
 export const FOLLOW_UP_SKIPPED = '発症時期、悪寒、常用薬、薬のアレルギーの有無';
 
-const FOLLOW_UP_KEYS: Record<FollowUpId, string> = {
-  onsetConfirm: '発症時期', onsetMode: '発症様式', course: '経過', selfCare: '受診前の対処', fatigue: '倦怠感・食欲',
+export const FOLLOW_UP_KEYS: Record<FollowUpId, string> = {
+  onset: '発症時期', onsetConfirm: '発症時期', onsetMode: '発症様式', course: '経過', selfCare: '受診前の対処', fatigue: '倦怠感・食欲',
   bloodThinner: '抗凝固薬・抗血小板薬', allergyDetail: '薬剤アレルギーの内容', foodLatex: '食物・ラテックスアレルギー',
   illness: '既往歴', surgery: '手術歴・入院歴', pregnancy: '妊娠の可能性', breastfeeding: '授乳',
   smoking: '喫煙', alcohol: '飲酒', travel: '渡航歴（1か月以内）', heightWeight: '身長・体重',
@@ -214,7 +216,7 @@ function choiceFlag(id: FollowUpId, a: OptId): SheetRow['flag'] {
   return undefined;
 }
 
-export function followUpRows(lang: CaseLang, stored: { asked: FollowUpId[]; answers: FollowUpAnswers } | null): SheetRow[] {
+export function followUpRows(lang: LangId, stored: { asked: FollowUpId[]; answers: FollowUpAnswers } | null): SheetRow[] {
   const asked = stored?.asked ?? FOLLOW_UPS.map((f) => f.id);
   const answers = stored?.answers ?? SAMPLE_FOLLOW_UP_ANSWERS;
   const t = FOLLOW_UP_TEXT[lang];
@@ -236,8 +238,49 @@ export function followUpRows(lang: CaseLang, stored: { asked: FollowUpId[]; answ
     if (typeof a === 'object') return { key, value: `${a.h} cm / ${a.w} kg`, original: `${a.h} cm / ${a.w} kg`, terms: [], required };
     if (a === 'voice') {
       if (!isVoiceId(id)) return { key, value: '—', original: '—', terms: [], required };
-      return { key, value: VOICE_JA[id], original: getVoiceAnswer(lang, id).answer, terms: VOICE_TERMS[lang][id], required };
+      return { key, value: VOICE_JA[id], original: getVoiceAnswer(lang, id).answer, terms: VOICE_TERMS[lang as CaseLang]?.[id] ?? [], required };
     }
     return { key, value: choiceValueJa(id, a), original: t.opt[a], terms: [], flag: choiceFlag(id, a), required };
   });
+}
+
+// ===== 本物の音声認識＋AI の解釈（lib/interpret.ts）から作る問診票 =====
+
+/**
+ * AI が口述に当てはめた項目を並べる。当てはまらなかった項目は、聞き足しでボタンで答えた内容、それも無ければ「未回答」。
+ * 原文欄には AI が根拠にした発話をそのまま出す（医療者が誤訳・誤解釈に気づけるように）
+ */
+export function interpretedSheet(si: StoredInterpretation, fu: { asked: FollowUpId[]; answers: FollowUpAnswers } | null): { c: SheetCase; rows: SheetRow[] } {
+  const L = getLang(si.lang);
+  const fuRowByKey = new Map(followUpRows(si.lang, fu ?? { asked: [], answers: {} })
+    .filter((r) => r.value !== '未回答' && r.value !== '—')
+    .map((r) => [r.key, r]));
+  const rows: SheetRow[] = [];
+  for (const f of INTERPRET_FIELDS) {
+    const it = si.items[f.id];
+    const required = isRequiredKey(f.key);
+    if (it?.found) rows.push({ key: f.key, value: it.ja, original: it.evidence, terms: it.terms ?? [], required });
+    else if (fuRowByKey.has(f.key)) rows.push(fuRowByKey.get(f.key)!);
+    // 妊娠は対象の人にだけ聞くので、聞いていなければ行を出さない（必須項目の欄で「対象外」になる）
+    else if (f.id === 'pregnancy' && !fu?.asked.includes('pregnancy')) continue;
+    // 必須でない項目は、話していなくても問題ない
+    else if (!required) rows.push({ key: f.key, value: '言及なし', original: '—', terms: [] });
+    else rows.push({ key: f.key, value: '未回答', original: '—', terms: [], flag: { label: '未回答', tone: 'warn' }, required });
+    if (f.id === 'aggravating') {
+      rows.push({ key: '痛みの強さ', value: si.pain === null ? '未回答' : `NRS ${si.pain} / 10`, original: si.pain === null ? '—' : `0〜10のスケールで「${si.pain}」を画面上で選択`, terms: [], required: true });
+    }
+  }
+  const allergy = si.items.drugAllergy;
+  return {
+    c: {
+      label: '今回の回答',
+      htmlLang: L.htmlLang,
+      originalLabel: `原文（${L.native} / ${si.locale}）`,
+      meta: { language: `${L.ja}（${si.locale}）`, detection: '音声認識＋AIの解釈' },
+      // 「なし」と答えたときは警告を出さない
+      allergyOriginal: allergy?.found && !/^なし/.test(allergy.ja.trim()) ? allergy.evidence : '',
+      rows,
+    },
+    rows,
+  };
 }

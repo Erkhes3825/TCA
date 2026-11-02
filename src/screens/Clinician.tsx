@@ -1,19 +1,25 @@
 import { useState } from 'react';
 import Icon from '../components/Icon';
 import {
-  CASE_LANGS, FOLLOW_UP_SKIPPED, SHEET_ALLERGY_LABEL, SHEET_CASES, SHEET_META_COMMON, followUpRows, requiredStatus,
+  CASE_LANGS, FOLLOW_UP_SKIPPED, SHEET_ALLERGY_LABEL, SHEET_CASES, SHEET_META_COMMON, followUpRows, interpretedSheet, requiredStatus,
   type CaseLang, type SheetCase, type SheetRow,
 } from '../data/clinicianSheet';
+import { recallInterpretation } from '../lib/interpret';
 import { recallCaseLang, recallFollowUps } from '../lib/uiLang';
 
 export default function Clinician() {
   const [showOriginal, setShowOriginal] = useState(true);
   // 既定は患者画面で選んだ言語（サンプルのある英語・中国語・ベトナム語のどれか）
   const [caseLang, setCaseLang] = useState<CaseLang>(recallCaseLang);
-  const c = SHEET_CASES[caseLang];
   // 患者画面で聞き足しに答えていればその内容、無ければサンプル
   const [storedFollowUps] = useState(recallFollowUps);
-  const fuRows = followUpRows(caseLang, storedFollowUps);
+  // 本物の音声認識＋AI の解釈で答えていれば、その内容を最初に出す
+  const [interpretation] = useState(recallInterpretation);
+  const [showLive, setShowLive] = useState(interpretation !== null);
+  const liveSheet = interpretation ? interpretedSheet(interpretation, storedFollowUps) : null;
+  const c = showLive && liveSheet ? liveSheet.c : SHEET_CASES[caseLang];
+  // サンプルの口述と同じ項目（AI の解釈に失敗して聞き足した発症時期など）は重ねて出さない
+  const fuRows = showLive && liveSheet ? [] : followUpRows(caseLang, storedFollowUps).filter((r) => !c.rows.some((x) => x.key === r.key));
   const required = requiredStatus([...c.rows, ...fuRows]);
   const applicable = required.filter((r) => r.state !== 'na');
   const missing = applicable.filter((r) => r.state === 'missing');
@@ -33,8 +39,11 @@ export default function Clinician() {
           </div>
           <div className="row-wrap">
             <div className="case-switch" role="group" aria-label="サンプル症例の言語">
+              {liveSheet ? (
+                <button type="button" className="btn-toggle" aria-pressed={showLive} onClick={() => setShowLive(true)}>今回の回答</button>
+              ) : null}
               {CASE_LANGS.map((l) => (
-                <button key={l} type="button" className="btn-toggle" aria-pressed={caseLang === l} lang={SHEET_CASES[l].htmlLang} onClick={() => setCaseLang(l)}>
+                <button key={l} type="button" className="btn-toggle" aria-pressed={!showLive && caseLang === l} lang={SHEET_CASES[l].htmlLang} onClick={() => { setCaseLang(l); setShowLive(false); }}>
                   {SHEET_CASES[l].label}
                 </button>
               ))}
@@ -51,7 +60,7 @@ export default function Clinician() {
         </header>
 
         <dl className="sheet__meta">
-          {meta.map((m) => (
+          {(showLive && interpretation ? [meta[1], meta[2], ...interpretation.meta] : meta).map((m) => (
             <div key={m.k} className="stack-2">
               <dt>{m.k}</dt>
               <dd>{m.v}</dd>
@@ -59,11 +68,13 @@ export default function Clinician() {
           ))}
         </dl>
 
-        <div className="alert" role="alert">
-          <Icon name="warn" size={22} />
-          <strong>{SHEET_ALLERGY_LABEL}</strong>
-          <span>患者申告（原文：<span lang={c.htmlLang}>{c.allergyOriginal}</span>）</span>
-        </div>
+        {c.allergyOriginal ? (
+          <div className="alert" role="alert">
+            <Icon name="warn" size={22} />
+            <strong>{showLive && liveSheet ? `アレルギー：${c.rows.find((r) => r.key === 'アレルギー')?.value ?? ''}` : SHEET_ALLERGY_LABEL}</strong>
+            <span>患者申告（原文：<span lang={c.htmlLang}>{c.allergyOriginal}</span>）</span>
+          </div>
+        ) : null}
 
         {/* 必須項目が空欄なく揃っているか。医療者が最初に見る */}
         <div className={`required-bar${missing.length ? ' required-bar--missing' : ''}`}>
@@ -72,11 +83,17 @@ export default function Clinician() {
         </div>
 
         <div className="sheet__rows">
+          {showLive && liveSheet ? (
+            <div className="sheet__section">
+              <h2>AIが自由口述と聞き足しから当てはめた項目</h2>
+              <p>原文欄は、AIが根拠にした患者の発話です。訳や当てはめに迷いがあれば原文で確認してください。</p>
+            </div>
+          ) : null}
           {c.rows.map((r) => <Row key={r.key} r={r} c={c} showOriginal={showOriginal} />)}
-          <div className="sheet__section">
+          {showLive && liveSheet ? null : <div className="sheet__section">
             <h2>聞き足し（自由口述で拾えなかった項目）</h2>
             <p>口述で聞き取れたため聞き足していない項目：{FOLLOW_UP_SKIPPED}{storedFollowUps ? '' : '。以下はサンプルの回答（患者画面で答えると、その内容に替わります）'}</p>
-          </div>
+          </div>}
           {fuRows.map((r) => <Row key={r.key} r={r} c={c} showOriginal={showOriginal} />)}
         </div>
 
