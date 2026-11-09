@@ -72,73 +72,84 @@ export default function StartStep(p: Props) {
     </div>
   );
 
+  // 年齢は数字だけの短い表記で1行に収める（読み上げには各言語の正式な表記を使う）
+  const AGE_SHORT = ['0–14', '15–29', '30–49', '50–69', '70+'];
+
   return (
     <div className="screen">
-      <div className="screen__body stack-22">
-        {/* 話す言葉 */}
-        <section className="stack-10" aria-labelledby="you-speak">
-          <h2 id="you-speak" className="start__label">{t.youSpeak}</h2>
-          {listOpen ? (
-            <div className="stack-10">
-              {SHOW_GLOSS && !detection.ok && !picked ? (
-                <p className="note" lang="ja">端末の言語設定（{detection.tag || '不明'}）は対応言語に当たらないため、一覧から選んでもらいます。</p>
-              ) : null}
-              <div className="grid-2">
-                {LANGS.map((l) => (
-                  <Choice key={l.id} shape="tile" selected={picked && lang === l.id} onClick={() => { p.onPickLang(l.id); setListOpen(false); }}>
-                    <span className="choice__main">{l.native}</span>
-                  </Choice>
-                ))}
+      <div className="screen__body start">
+        {/* 言葉：話す言葉 → 伝える言葉のカードと「詳細」を一つのまとまりにする */}
+        <div className="start__group">
+          <section className="start__lang" aria-labelledby="you-speak">
+            {listOpen ? (
+              <div className="stack-10 grow">
+                <h2 id="you-speak" className="start__cap">{t.youSpeak}</h2>
+                {SHOW_GLOSS && !detection.ok && !picked ? (
+                  <p className="note" lang="ja">端末の言語設定（{detection.tag || '不明'}）は対応言語に当たらないため、一覧から選んでもらいます。</p>
+                ) : null}
+                <div className="grid-2">
+                  {LANGS.map((l) => (
+                    <Choice key={l.id} shape="tile" selected={picked && lang === l.id} onClick={() => { p.onPickLang(l.id); setListOpen(false); }}>
+                      <span className="choice__main">{l.native}</span>
+                    </Choice>
+                  ))}
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="start__lang">
-              <span className="start__lang-name">{L.native}</span>
-              <button type="button" className="btn-small" onClick={() => setListOpen(true)}>
-                <Icon name="globe" size={16} />{t.change}
-              </button>
-            </div>
-          )}
+            ) : (
+              <>
+                <div className="start__lang-text">
+                  <h2 id="you-speak" className="start__cap">{t.youSpeak}</h2>
+                  <span className="start__lang-name">{L.native}</span>
+                  {/* 方言を端末から決められないときだけ、カードの中で選ばせる（音声認識の設定に関わるため） */}
+                  {askDialect ? (
+                    <select className="start__dialect" aria-label={t.dialect} value={region ?? ''} onChange={(e) => p.onPickRegion(e.target.value)}>
+                      {region === null ? <option value="" disabled>{t.dialect}</option> : null}
+                      {L.regions.map((r) => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  ) : null}
+                </div>
+                <button type="button" className="btn-small" onClick={() => setListOpen(true)}>
+                  <Icon name="globe" size={16} />{t.change}
+                </button>
+              </>
+            )}
+          </section>
           {!listOpen && fromPhone && lang === 'ja' ? (
             <p className="note" lang="en">Your phone is set to Japanese. If you speak another language, tap “{t.change}”.</p>
           ) : null}
-          {!listOpen && askDialect ? (
-            <div className="stack-6">
-              <span className="start__sub">{t.dialect}</span>
-              {dialectChips}
-            </div>
-          ) : null}
-        </section>
 
-        {/* 話す言葉 → 伝える言葉。同じ見た目のカードを矢印でつなぐ */}
-        <div className="start__arrow" aria-hidden="true"><Icon name="arrowDown" size={28} strokeWidth={2.4} /></div>
+          <div className="start__arrow" aria-hidden="true"><Icon name="arrowDown" size={24} strokeWidth={2.4} /></div>
 
-        {/* 伝える言葉（URL の ?to= か端末の時刻帯から推測。無ければ日本語） */}
-        <section ref={targetRef} className={`stack-10${flag('target')}`} aria-labelledby="tell-in">
-          <h2 id="tell-in" className="start__label">{t.tellIn}</h2>
-          {targetOpen ? (
-            <div className="grid-2">
-              {TARGET_LANGS.map((x) => (
-                <Choice key={x} shape="tile" selected={target === x} onClick={() => { p.onPickTarget(x); setTargetOpen(false); setAttention(null); }}>
-                  <span className="choice__main" lang={getLang(x).htmlLang}>{targetName(x)}</span>
-                </Choice>
-              ))}
-            </div>
-          ) : (
-            <div className="start__lang">
-              <span className="start__lang-name" lang={getLang(target).htmlLang}>{targetName(target)}</span>
-              <button type="button" className="btn-small" onClick={() => setTargetOpen(true)}>
-                <Icon name="globe" size={16} />{t.change}
-              </button>
-            </div>
-          )}
+          {/* 伝える言葉（URL の ?to= か端末の時刻帯から推測。無ければ日本語） */}
+          <section ref={targetRef} className={`start__lang${flag('target')}`} aria-labelledby="tell-in">
+            {targetOpen ? (
+              <div className="stack-10 grow">
+                <h2 id="tell-in" className="start__cap">{t.tellIn}</h2>
+                <div className="grid-2">
+                  {TARGET_LANGS.map((x) => (
+                    <Choice key={x} shape="tile" selected={target === x} onClick={() => { p.onPickTarget(x); setTargetOpen(false); setAttention(null); }}>
+                      <span className="choice__main" lang={getLang(x).htmlLang}>{targetName(x)}</span>
+                    </Choice>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="start__lang-text">
+                  <h2 id="tell-in" className="start__cap">{t.tellIn}</h2>
+                  <span className="start__lang-name" lang={getLang(target).htmlLang}>{targetName(target)}</span>
+                </div>
+                <button type="button" className="btn-small" onClick={() => setTargetOpen(true)}>
+                  <Icon name="globe" size={16} />{t.change}
+                </button>
+              </>
+            )}
+          </section>
           {same ? <p className="note" role="alert">{t.sameLang}</p> : null}
-        </section>
 
-        {/* 地域・方言、言葉の判定の根拠は「詳細」の中 */}
-        <div className="stack-10">
+          {/* 地域・方言、言葉の判定の根拠、バージョンは「詳細」の中。カードのすぐ下に置いてつながりを見せる */}
           {!listOpen ? (
-            <button type="button" className="details-toggle" aria-expanded={details} aria-controls="start-details" onClick={() => setDetails((d) => !d)}>
+            <button type="button" className="details-toggle start__details-toggle" aria-expanded={details} aria-controls="start-details" onClick={() => setDetails((d) => !d)}>
               {details ? t.hideDetails : t.details}
             </button>
           ) : null}
@@ -176,28 +187,32 @@ export default function StartStep(p: Props) {
                   {detection.country ? `国・地域は${detection.countrySource === 'format' ? '日付・数字の書式設定' : '言語設定'}から読み取りました` : '国・地域は端末から読み取れませんでした'}
                 </Gloss>
               ) : null}
+              <p className="version" lang="en">Tsutaeru mock v{__APP_VERSION__} · {__BUILD_DATE__}</p>
             </dl>
           ) : null}
         </div>
 
-        {/* 年齢・性別（既定値なし） */}
-        <section ref={ageRef} className={`stack-10${flag('age')}`} aria-labelledby="age-h">
-          <h2 id="age-h" className="start__label">{t.age}</h2>
-          <div className="row-wrap">
-            {t.ages.map((a, i) => <Choice key={i} selected={age === i} onClick={() => { p.onPickAge(i); setAttention(null); }}>{a}</Choice>)}
-          </div>
-        </section>
-        <section ref={sexRef} className={`stack-10${flag('sex')}`} aria-labelledby="sex-h">
-          <h2 id="sex-h" className="start__label">{t.sex}</h2>
-          <div className="row-wrap">
-            {t.sexes.map((x, i) => <Choice key={i} selected={sex === i} onClick={() => { p.onPickSex(i); setAttention(null); }}>{x}</Choice>)}
-          </div>
-        </section>
-
-        <p className="version" lang="en">Tsutaeru mock v{__APP_VERSION__} · {__BUILD_DATE__}</p>
+        {/* 年齢・性別（既定値なし）。見出しは小さく、選択肢はそれぞれ1行 */}
+        <div className="start__group">
+          <section ref={ageRef} className={`start__field${flag('age')}`} aria-labelledby="age-h">
+            <h2 id="age-h" className="start__cap">{t.age}</h2>
+            <div className="start__opts start__opts--5">
+              {AGE_SHORT.map((a, i) => (
+                <Choice key={i} selected={age === i} ariaLabel={t.ages[i]} onClick={() => { p.onPickAge(i); setAttention(null); }}>{a}</Choice>
+              ))}
+            </div>
+          </section>
+          <section ref={sexRef} className={`start__field${flag('sex')}`} aria-labelledby="sex-h">
+            <h2 id="sex-h" className="start__cap">{t.sex}</h2>
+            <div className="start__opts start__opts--3">
+              {t.sexes.map((x, i) => <Choice key={i} selected={sex === i} onClick={() => { p.onPickSex(i); setAttention(null); }}>{x}</Choice>)}
+            </div>
+          </section>
+        </div>
       </div>
       <footer className="screen__foot stack-8">
-        {age === null || sex === null ? <p className="start__need">{t.needAgeSex}</p> : null}
+        {/* 案内は、足りないまま押したときだけ出す */}
+        {attention === 'age' || attention === 'sex' ? <p className="start__need" role="status">{t.needAgeSex}</p> : null}
         <button type="button" className="btn-primary" onClick={start}>{t.startTalking}</button>
       </footer>
     </div>
