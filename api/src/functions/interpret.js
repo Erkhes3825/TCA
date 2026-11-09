@@ -6,6 +6,8 @@
 //   AZURE_OPENAI_API_VERSION  任意。既定 2024-10-21
 //   ALLOWED_ORIGINS           任意。カンマ区切りで、呼び出しを許す公開元（speechToken と同じ）
 //
+// 訳す先（医療者が読む言葉）はリクエストの target（ja / zh / mn。無ければ日本語）。
+//
 // AI が話していないことを埋めないよう、各項目に「根拠になった原文の一部（evidence）」を返させ、
 // evidence が患者の発話に実際に含まれていなければ、その項目は「見つからなかった」に戻す。
 const { app } = require('@azure/functions');
@@ -33,10 +35,11 @@ const MODEL_TIMEOUT_MS = 15000;
 const item = {
   type: 'object',
   additionalProperties: false,
-  required: ['found', 'ja', 'restated', 'evidence', 'terms'],
+  required: ['found', 'denied', 'translated', 'restated', 'evidence', 'terms'],
   properties: {
     found: { type: 'boolean', description: '患者が実際にこの項目について話したか' },
-    ja: { type: 'string', description: '医療者向けの日本語。簡潔な問診票の書き方で。found=false なら空文字' },
+    denied: { type: 'boolean', description: '患者が「ない」と明言したか（例: アレルギーはない）。found=false なら false' },
+    translated: { type: 'string', description: '医療者向けの訳（指定された言語）。簡潔な問診票の書き方で。found=false なら空文字' },
     restated: { type: 'string', description: '患者の言語で、患者が確認できる短い言い直し。found=false なら空文字' },
     evidence: { type: 'string', description: '根拠になった患者の発話の一部を、一字一句そのまま。found=false なら空文字' },
     terms: {
@@ -46,7 +49,7 @@ const item = {
         type: 'object',
         additionalProperties: false,
         required: ['from', 'to'],
-        properties: { from: { type: 'string', description: '患者の言葉（原文のまま）' }, to: { type: 'string', description: '日本語の医療用語' } },
+        properties: { from: { type: 'string', description: '患者の言葉（原文のまま）' }, to: { type: 'string', description: '医療用語（指定された言語）' } },
       },
     },
   },
@@ -66,16 +69,24 @@ const schema = {
   },
 };
 
-const SYSTEM = [
-  'あなたは日本の医療機関の問診を手伝う通訳者です。外国人患者が自分の言語で話した内容を読み、問診票の各項目に当てはめます。',
+/** 伝える言葉（医療者が読む言葉）。アプリの src/lib/target.ts と同じ */
+const TARGETS = {
+  ja: { name: '日本語', example: '昨夜から続く強い腹痛。右季肋部。', none: 'なし' },
+  zh: { name: '中国語（簡体字）', example: '昨晚开始持续性剧烈腹痛，右季肋部。', none: '无' },
+  mn: { name: 'モンゴル語（キリル文字）', example: 'Өчигдөр оройноос хэвлийн хүчтэй өвдөлт, баруун хавирганы доор.', none: 'Байхгүй' },
+};
+
+const system = (target) => [
+  `あなたは医療機関の問診を手伝う通訳者です。患者が自分の言語で話した内容を読み、問診票の各項目に当てはめ、医療者向けに${target.name}に訳します。`,
   '守ること:',
   '- 患者が話した内容だけを使う。推測・補完・診断・病名の推定はしない。',
   '- 話していない項目は found=false にする。少しでも迷ったら found=false にして、医療者が聞き足せるようにする。',
-  '- 「ない」と明言した場合は found=true で「なし」と書く（例: 下痢なし）。',
+  `- 「ない」と明言した場合は found=true、denied=true で、translated は「${target.none}」と書く（例: 下痢${target.none}）。`,
   '- 同じ項目について後から言い直した回答（確認画面での訂正を含む）があれば、後の回答を採る。',
   '- evidence には根拠の発話を一字一句そのまま写す（翻訳しない、言い換えない）。',
-  '- ja は日本の問診票の簡潔な書き方（例: 「昨夜から続く強い腹痛。右季肋部。」）。',
-  '- 口語・方言・俗語・薬の現地名を医療用語にしたものは terms に入れる。',
+  `- translated は${target.name}の問診票の簡潔な書き方（例: 「${target.example}」）。`,
+  `- 口語・方言・俗語・薬の現地名を医療用語にしたものは terms に入れる（to は${target.name}）。`,
+  '- restated は患者の言語で書く。',
   '項目:',
   ...Object.entries(FIELDS).map(([k, v]) => `- ${k}: ${v}`),
 ].join('\n');
@@ -102,7 +113,7 @@ app.http('interpret', {
       return { status: 500, jsonBody: { error: 'not configured' } };
     }
 
-    // { lang: 'en', locale: 'en-GB', qa: [{ q: '質問（患者の言語）', a: '認識結果' }] }
+    // { lang: 'en', target: 'ja', locale: 'en-GB', qa: [{ q: '質問（患者の言語）', a: '認識結果' }] }
     let body;
     try { body = await request.json(); } catch { return { status: 400, jsonBody: { error: 'bad json' } }; }
     const qa = Array.isArray(body?.qa) ? body.qa.filter((x) => x && typeof x.q === 'string' && typeof x.a === 'string' && x.a.trim()) : [];
@@ -118,7 +129,7 @@ app.http('interpret', {
         headers: { 'api-key': key, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [
-            { role: 'system', content: SYSTEM },
+            { role: 'system', content: system(Object.hasOwn(TARGETS, body.target) ? TARGETS[body.target] : TARGETS.ja) },
             { role: 'user', content: `患者の言語: ${String(body.locale || body.lang || '不明')}\n\n${transcript}` },
           ],
           
@@ -149,7 +160,7 @@ app.http('interpret', {
       const it = items[k];
       if (!it || !it.found) continue;
       if (!it.evidence || !said.includes(norm(it.evidence))) {
-        items[k] = { found: false, ja: '', restated: '', evidence: '', terms: [] };
+        items[k] = { found: false, denied: false, translated: '', restated: '', evidence: '', terms: [] };
       }
     }
 

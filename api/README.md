@@ -78,6 +78,8 @@ curl -X POST -H "Origin: https://ユーザー名.github.io" https://<名前>.azu
 
 使わなくても音声認識は動きます（その場合、聞き足しは全部聞きます）。
 
+訳す先（伝える言葉）は、アプリが送る `target`（`ja`・`zh`・`mn`）で決まります。`interpret.js` を直したら、必ずデプロイし直してください。古い版のままだと、中国語・モンゴル語を選んでも日本語で返ります（アプリは古い版の返し方も読めるので、止まりはしません）。
+
 1. Azure ポータルで **Azure OpenAI** のリソースを作る（リージョンは Japan East を推奨。使えるモデルはリージョンで違うので、作成画面で確認）
 2. Azure AI Foundry でモデルを **デプロイ** する。**Structured outputs（JSON Schema で出力を固定する機能）に対応したモデル**を選ぶ（対応モデルは [公式の説明](https://learn.microsoft.com/azure/ai-services/openai/how-to/structured-outputs) で確認）。デプロイ名を控える
 3. Function App のアプリ設定に追加：

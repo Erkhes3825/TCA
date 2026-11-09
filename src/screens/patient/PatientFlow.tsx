@@ -3,36 +3,35 @@ import Gloss from '../../components/Gloss';
 import Icon from '../../components/Icon';
 import TextSizeControl from '../../components/TextSizeControl';
 import { getLang, type LangId } from '../../data/languages';
-import { DEPARTMENT_IDS, getTurns } from '../../data/interview';
+import { getTurns } from '../../data/interview';
 import { FOLLOW_UPS, FOLLOW_UP_TEXT, ONSET_FOLLOW_UP, activeFollowUps, type FollowUpAnswer, type FollowUpAnswers, type FollowUpDef, type FollowUpId } from '../../data/followUps';
-import type { DeptId } from '../../data/ui';
 import { UI } from '../../data/ui';
-import { UiLangProvider, rememberCaseLang, rememberFollowUps } from '../../lib/uiLang';
+import { UiLangProvider, rememberBasics, rememberCaseLang, rememberFollowUps } from '../../lib/uiLang';
 import { detectLocale, readDeviceLocales, readFormatCountry } from '../../lib/detectLocale';
 import { SIMULATED_LOCALE } from '../../lib/params';
 import { loadConfig } from '../../lib/config';
+import { TargetCtx, rememberTarget, targetFromUrl, type TargetLang } from '../../lib/target';
 import { coveredFollowUps, interpret, rememberInterpretation, type InterpretedItems } from '../../lib/interpret';
 import { SpeechError, speechLocale, startListening, type SpeechErrorKind, type SpeechSession } from '../../lib/speech';
-import LanguageStep from './LanguageStep';
-import BasicsStep from './BasicsStep';
+import StartStep from './StartStep';
 import InterviewStep from './InterviewStep';
 import ReviewStep from './ReviewStep';
 import DoneStep from './DoneStep';
 
-export type Screen = 0 | 1 | 2 | 3 | 4;
+/** 0 最初の画面 → 1 問診 → 2 確認 → 3 完了 */
+export type Screen = 0 | 1 | 2 | 3;
 
 export interface FlowState {
   screen: Screen;
   /** 本人が選び直した言語。null なら端末設定の判定結果を使う */
   userLang: LangId | null;
   userRegion: string | null;
-  /** 判定結果を使わず一覧から選ぶモード */
-  manual: boolean;
-  dept: DeptId;
-  /** UI.ages の番号 */
-  age: number;
-  /** UI.sexes の番号 */
-  sex: number;
+  /** 伝える言葉（医療者が読む言葉）。既定は URL の ?to= */
+  target: TargetLang;
+  /** UI.ages の番号。既定値を置かない（本人が選ぶまで null） */
+  age: number | null;
+  /** UI.sexes の番号。同上 */
+  sex: number | null;
   /** 問診の進行（TURNS のインデックス） */
   step: number;
   /** 聞き足しの進行（activeFollowUps のインデックス）。TURNS が終わってから進む */
@@ -61,8 +60,8 @@ export interface FlowState {
 }
 
 const INITIAL: FlowState = {
-  screen: 0, userLang: null, userRegion: null, manual: false,
-  dept: 'im', age: 2, sex: 0, step: 0, fu: 0, fuAnswers: {}, pain: null, recording: false,
+  screen: 0, userLang: null, userRegion: null, target: targetFromUrl(),
+  age: null, sex: null, step: 0, fu: 0, fuAnswers: {}, pain: null, recording: false,
   live: {}, interim: '', speechError: null,
   interpPhase: 'idle', interp: null, fuIds: null, edits: {}, confirming: false,
 };
@@ -110,12 +109,16 @@ export default function PatientFlow() {
     : baseTurns), [baseTurns, speechUrl, s.live]);
   // 医療者画面のサンプルを、患者が選んだ言語に合わせる
   useEffect(() => { rememberCaseLang(lang); }, [lang]);
+  useEffect(() => { rememberTarget(s.target); }, [s.target]);
+  useEffect(() => { rememberBasics({ age: s.age, sex: s.sex }); }, [s.age, s.sex]);
+  const basics = { age: s.age ?? -1, sex: s.sex ?? -1 };
   // 聞き足す項目は年齢・性別で変わる（妊娠）。AI の解釈を使うときは、口述で当てはまった項目を除く
   const followUps = useMemo((): FollowUpDef[] => {
     if (s.fuIds) return s.fuIds.map((id) => [ONSET_FOLLOW_UP, ...FOLLOW_UPS].find((f) => f.id === id)!);
     // 口述の解釈が終わるまでは聞き足しを出さない
     if (useInterpret) return [];
-    return activeFollowUps({ age: s.age, sex: s.sex });
+    return activeFollowUps(basics);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.fuIds, useInterpret, s.age, s.sex]);
 
   const speechQa = (p: FlowState, withFollowUps: boolean) => {
@@ -129,10 +132,10 @@ export default function PatientFlow() {
 
   // 口述が終わったら解釈して、聞き足す項目を決める。失敗したら全部聞く
   useEffect(() => {
-    if (!useInterpret || !interpretUrl || s.screen !== 2 || s.interpPhase !== 'idle' || s.step < turns.length) return;
+    if (!useInterpret || !interpretUrl || s.screen !== 1 || s.interpPhase !== 'idle' || s.step < turns.length) return;
     update({ interpPhase: 'narrative' });
-    const base = activeFollowUps({ age: s.age, sex: s.sex });
-    interpret(interpretUrl, { lang, locale: speechLocale(lang, region), qa: speechQa(s, false) })
+    const base = activeFollowUps(basics);
+    interpret(interpretUrl, { lang, target: s.target, locale: speechLocale(lang, region), qa: speechQa(s, false) })
       .then((items) => {
         const covered = coveredFollowUps(items);
         const ids = [...(items.onset?.found ? [] : [ONSET_FOLLOW_UP.id]), ...base.map((f) => f.id).filter((id) => !covered.has(id))];
@@ -148,7 +151,7 @@ export default function PatientFlow() {
     const voiced = followUps.some((f) => s.live[`f${f.id}`]);
     if (!voiced) { update({ interpPhase: 'done' }); return; }
     update({ interpPhase: 'final' });
-    interpret(interpretUrl, { lang, locale: speechLocale(lang, region), qa: speechQa(s, true) })
+    interpret(interpretUrl, { lang, target: s.target, locale: speechLocale(lang, region), qa: speechQa(s, true) })
       .then((items) => update({ interpPhase: 'done', interp: items }))
       .catch(() => update({ interpPhase: 'done' }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -157,25 +160,20 @@ export default function PatientFlow() {
   // 確認画面で書き直しがあれば、訂正として AI にもう一度渡してから送る。失敗しても送信は止めない
   const confirm = () => {
     const corrections = Object.entries(s.edits).map(([q, a]) => ({ q, a }));
-    if (!interpretUrl || !useInterpret || corrections.length === 0) { go(4); return; }
+    if (!interpretUrl || !useInterpret || corrections.length === 0) { go(3); return; }
     update({ confirming: true });
-    interpret(interpretUrl, { lang, locale: speechLocale(lang, region), qa: [...speechQa(s, true), ...corrections] })
-      .then((items) => update({ interp: items, interpPhase: 'done', confirming: false, screen: 4 }))
-      .catch(() => update({ confirming: false, screen: 4 }));
+    interpret(interpretUrl, { lang, target: s.target, locale: speechLocale(lang, region), qa: [...speechQa(s, true), ...corrections] })
+      .then((items) => update({ interp: items, interpPhase: 'done', confirming: false, screen: 3 }))
+      .catch(() => update({ confirming: false, screen: 3 }));
   };
 
   useEffect(() => {
     if (s.interpPhase === 'done' && s.interp) rememberInterpretation({
-      lang, locale: speechLocale(lang, region), items: s.interp, pain: s.pain,
-      meta: [
-        { k: '希望診療科', v: DEPARTMENT_IDS.find((d) => d.id === s.dept)?.ja ?? '' },
-        { k: '年齢', v: UI.ja.ages[s.age] },
-        { k: '性別', v: UI.ja.sexes[s.sex] },
-      ],
+      lang, target: s.target, locale: speechLocale(lang, region), items: s.interp, pain: s.pain, age: s.age, sex: s.sex,
     });
-  }, [s.interpPhase, s.interp, s.pain, s.dept, s.age, s.sex, lang, region]);
+  }, [s.interpPhase, s.interp, s.pain, s.age, s.sex, s.target, lang, region]);
   useEffect(() => { rememberFollowUps({ asked: followUps.map((f) => f.id), answers: s.fuAnswers }); }, [followUps, s.fuAnswers]);
-  const stepLabel = s.screen < 4 ? t.step(s.screen + 1) : '';
+  const stepLabel = s.screen < 3 ? t.step(s.screen + 1) : '';
 
   const go = (screen: Screen) => update({ screen });
 
@@ -220,15 +218,17 @@ export default function PatientFlow() {
     window.clearTimeout(timer.current);
     void session.current?.stop();
     session.current = null;
-    setS(INITIAL);
+    // 伝える言葉は現地ごとに決まっているので、やり直しても引き継ぐ
+    setS((p) => ({ ...INITIAL, target: p.target }));
     rememberInterpretation(null);
   };
 
   return (
     <UiLangProvider lang={lang}>
+    <TargetCtx.Provider value={s.target}>
     <div className="phone" lang={getLang(lang).htmlLang}>
       <header className="phone__bar">
-        {s.screen > 0 && s.screen < 4 ? (
+        {s.screen > 0 && s.screen < 3 ? (
           <button type="button" className="icon-btn" aria-label={t.back} onClick={() => go((s.screen - 1) as Screen)}>
             <Icon name="back" size={22} />
           </button>
@@ -239,7 +239,7 @@ export default function PatientFlow() {
         </div>
         <span className="phone__step">{stepLabel}</span>
         {/* 話し方のヒントは問診の画面だけ。常に出すと会話の場所を取るので、押したときだけ出す */}
-        {s.screen === 2 ? (
+        {s.screen === 1 ? (
           <button
             type="button"
             className="icon-btn icon-btn--text"
@@ -257,23 +257,23 @@ export default function PatientFlow() {
           aria-controls="text-size-panel"
           onClick={() => { setSizeOpen((o) => !o); setHintOpen(false); }}
         >Aa</button>
-        {s.screen < 4 ? (
+        {s.screen < 3 ? (
           <div
             className="phone__progress"
             role="progressbar"
             aria-valuemin={1}
-            aria-valuemax={4}
+            aria-valuemax={3}
             aria-valuenow={s.screen + 1}
             aria-valuetext={stepLabel}
           >
-            <span style={{ width: `${((s.screen + 1) / 4) * 100}%` }} />
+            <span style={{ width: `${((s.screen + 1) / 3) * 100}%` }} />
           </div>
         ) : null}
       </header>
       {sizeOpen ? (
         <div id="text-size-panel" className="text-size-panel"><TextSizeControl /></div>
       ) : null}
-      {hintOpen && s.screen === 2 ? (
+      {hintOpen && s.screen === 1 ? (
         <div id="hint-panel" className="hint-panel">
           <strong>{t.hint}</strong>
           <Gloss>普段の言葉・方言のままで大丈夫です。AIが医療者向けの言葉に整えます。</Gloss>
@@ -281,25 +281,23 @@ export default function PatientFlow() {
       ) : null}
 
       {s.screen === 0 && (
-        <LanguageStep
+        <StartStep
           detection={detection}
-          manual={s.manual}
+          picked={s.userLang !== null}
           lang={lang}
           region={region}
-          onPickLang={(id) => update({ userLang: id, userRegion: getLang(id).regions[0] })}
+          target={s.target}
+          age={s.age}
+          sex={s.sex}
+          onPickLang={(id) => update({ userLang: id, userRegion: getLang(id).regions.length === 1 ? getLang(id).regions[0] : null })}
           onPickRegion={(r) => update({ userRegion: r })}
-          onOpenPicker={() => update({ manual: true })}
-          onNext={() => go(1)}
+          onPickTarget={(x) => update({ target: x })}
+          onPickAge={(i) => update({ age: i })}
+          onPickSex={(i) => update({ sex: i })}
+          onStart={() => go(1)}
         />
       )}
       {s.screen === 1 && (
-        <BasicsStep
-          dept={s.dept} age={s.age} sex={s.sex}
-          onChange={update}
-          onNext={() => go(2)}
-        />
-      )}
-      {s.screen === 2 && (
         <InterviewStep
           turns={turns}
           followUps={followUps}
@@ -317,19 +315,20 @@ export default function PatientFlow() {
           onTapMic={tapMic}
           onPickPain={(v) => setS((p) => ({ ...p, pain: v, step: p.step + 1 }))}
           onAnswer={(a) => setS((p) => answered(p, a))}
-          onNext={() => go(3)}
+          onNext={() => go(2)}
         />
       )}
-      {s.screen === 3 && (
+      {s.screen === 2 && (
         <ReviewStep
           turns={turns} followUps={followUps} fuAnswers={s.fuAnswers} liveVoice={speechUrl ? s.live : null}
-          interp={useInterpret ? s.interp : null} lang={lang} dept={s.dept} pain={s.pain}
+          interp={useInterpret ? s.interp : null} lang={lang} pain={s.pain}
           edits={s.edits} onEdit={(k, text) => setS((p) => ({ ...p, edits: { ...p.edits, [k]: text } }))} busy={s.confirming}
-          onConfirm={confirm} onFix={() => go(2)}
+          onConfirm={confirm} onFix={() => go(1)}
         />
       )}
-      {s.screen === 4 && <DoneStep onReset={reset} />}
+      {s.screen === 3 && <DoneStep onReset={reset} />}
     </div>
+    </TargetCtx.Provider>
     </UiLangProvider>
   );
 }

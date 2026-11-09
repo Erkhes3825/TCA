@@ -4,11 +4,16 @@
 import type { TermMap } from '../data/interview';
 import type { FollowUpId } from '../data/followUps';
 import type { LangId } from '../data/languages';
+import type { TargetLang } from './target';
 
 export interface InterpretedItem {
   found: boolean;
-  /** 医療者向けの日本語 */
-  ja: string;
+  /** 「ない」と明言した（アレルギーの警告を出さない判断に使う）。古い版の関数には無い */
+  denied?: boolean;
+  /** 医療者向けの訳（伝える言葉）。Azure の関数が古い版のときは ja に日本語で入る */
+  translated?: string;
+  /** 古い版の関数が返す日本語。新しい版では translated */
+  ja?: string;
   /** 患者の言語での言い直し（確認画面に出す） */
   restated: string;
   /** 根拠になった患者の発話（原文のまま） */
@@ -48,7 +53,10 @@ export function coveredFollowUps(items: InterpretedItems | null): Set<FollowUpId
 /** 応答を待つ上限。超えたら失敗として扱い、聞き足しを全部聞く（問診を止めない） */
 const TIMEOUT_MS = 20000;
 
-export async function interpret(url: string, body: { lang: LangId; locale: string; qa: { q: string; a: string }[] }): Promise<InterpretedItems> {
+/** 医療者向けの訳。関数の新旧どちらの返し方でも読む */
+export const itemText = (it: InterpretedItem | undefined): string => it?.translated ?? it?.ja ?? '';
+
+export async function interpret(url: string, body: { lang: LangId; target: TargetLang; locale: string; qa: { q: string; a: string }[] }): Promise<InterpretedItems> {
   const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(TIMEOUT_MS) });
   if (!res.ok) throw new Error(`interpret ${res.status}`);
   const j = await res.json();
@@ -61,11 +69,14 @@ const KEY = 'tsutaeru.interpretation';
 
 export interface StoredInterpretation {
   lang: LangId;
+  /** 訳した先の言葉。古い版の関数だと、選んでも日本語で返ってくる */
+  target: TargetLang;
   locale: string;
   items: InterpretedItems;
   pain: number | null;
-  /** 患者が選んだ希望診療科・年齢・性別（日本語） */
-  meta: { k: string; v: string }[];
+  /** UI.ages / UI.sexes の番号 */
+  age: number | null;
+  sex: number | null;
 }
 
 export function rememberInterpretation(v: StoredInterpretation | null) {
