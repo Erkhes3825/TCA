@@ -109,7 +109,6 @@ export default function PatientFlow() {
     : baseTurns), [baseTurns, speechUrl, s.live]);
   // 医療者画面のサンプルを、患者が選んだ言語に合わせる
   useEffect(() => { rememberCaseLang(lang); }, [lang]);
-  useEffect(() => { rememberTarget(s.target); }, [s.target]);
   useEffect(() => { rememberBasics({ age: s.age, sex: s.sex }); }, [s.age, s.sex]);
   const basics = { age: s.age ?? -1, sex: s.sex ?? -1 };
   // 聞き足す項目は年齢・性別で変わる（妊娠）。AI の解釈を使うときは、口述で当てはまった項目を除く
@@ -294,7 +293,8 @@ export default function PatientFlow() {
           onPickTarget={(x) => update({ target: x })}
           onPickAge={(i) => update({ age: i })}
           onPickSex={(i) => update({ sex: i })}
-          onStart={() => go(1)}
+          // 伝える言葉は、始めたときだけ医療者画面に引き継ぐ（画面を開いただけでは URL の ?to= を上書きしない）
+          onStart={() => { rememberTarget(s.target); go(1); }}
         />
       )}
       {s.screen === 1 && (
