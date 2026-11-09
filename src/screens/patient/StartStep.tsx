@@ -5,7 +5,7 @@ import Icon from '../../components/Icon';
 import { LANGS, getLang, type LangId } from '../../data/languages';
 import { hasFullCase } from '../../data/interview';
 import { countryName, type Detection } from '../../lib/detectLocale';
-import { TARGET_LANGS, sameAsPatient, type TargetLang } from '../../lib/target';
+import { TARGET_LANGS, sameAsPatient, type TargetGuess, type TargetLang } from '../../lib/target';
 import { useUi } from '../../lib/uiLang';
 
 interface Props {
@@ -15,6 +15,8 @@ interface Props {
   lang: LangId;
   region: string | null;
   target: TargetLang;
+  /** 伝える言葉をどこから推測したか（詳細に出す） */
+  targetGuess: TargetGuess;
   age: number | null;
   sex: number | null;
   onPickLang: (id: LangId) => void;
@@ -39,6 +41,8 @@ export default function StartStep(p: Props) {
   // 端末から言語を判定できなければ、最初から一覧を開いておく
   const [listOpen, setListOpen] = useState(!detection.ok && !picked);
   const [details, setDetails] = useState(false);
+  const [targetOpen, setTargetOpen] = useState(false);
+  const targetName = (x: TargetLang) => (x === 'zh' ? '中文' : getLang(x).native);
 
   const fromPhone = detection.ok && !picked;
   // 方言を端末から決められず、選択肢が複数あるときは隠さない
@@ -88,6 +92,35 @@ export default function StartStep(p: Props) {
               {dialectChips}
             </div>
           ) : null}
+        </section>
+
+        {/* 話す言葉 → 伝える言葉。同じ見た目のカードを矢印でつなぐ */}
+        <div className="start__arrow" aria-hidden="true"><Icon name="arrowDown" size={28} strokeWidth={2.4} /></div>
+
+        {/* 伝える言葉（URL の ?to= か端末の時刻帯から推測。無ければ日本語） */}
+        <section className="stack-10" aria-labelledby="tell-in">
+          <h2 id="tell-in" className="start__label">{t.tellIn}</h2>
+          {targetOpen ? (
+            <div className="grid-2">
+              {TARGET_LANGS.map((x) => (
+                <Choice key={x} shape="tile" selected={target === x} onClick={() => { p.onPickTarget(x); setTargetOpen(false); }}>
+                  <span className="choice__main" lang={getLang(x).htmlLang}>{targetName(x)}</span>
+                </Choice>
+              ))}
+            </div>
+          ) : (
+            <div className="start__lang">
+              <span className="start__lang-name" lang={getLang(target).htmlLang}>{targetName(target)}</span>
+              <button type="button" className="btn-small" onClick={() => setTargetOpen(true)}>
+                <Icon name="globe" size={16} />{t.chooseAnother}
+              </button>
+            </div>
+          )}
+          {same ? <p className="note" role="alert">{t.sameLang}</p> : null}
+        </section>
+
+        {/* 地域・方言、言葉の判定の根拠は「詳細」の中 */}
+        <div className="stack-10">
           {!listOpen ? (
             <button type="button" className="details-toggle" aria-expanded={details} aria-controls="start-details" onClick={() => setDetails((d) => !d)}>
               {details ? t.hideDetails : t.details}
@@ -107,6 +140,11 @@ export default function StartStep(p: Props) {
                   </div>
                 </>
               ) : null}
+              {/* 伝える言葉の推測の根拠：URL の ?to= か、端末の時刻帯 */}
+              <div className="settings__row">
+                <dt>{t.tellIn}</dt>
+                <dd><code>{p.targetGuess.source === 'url' ? `?to=${p.targetGuess.target}` : p.targetGuess.zone ?? '—'}</code></dd>
+              </div>
               {!askDialect && L.regions.length > 1 ? (
                 <div className="settings__row settings__row--stack">
                   <dt>{t.dialect}</dt>
@@ -124,20 +162,7 @@ export default function StartStep(p: Props) {
               ) : null}
             </dl>
           ) : null}
-        </section>
-
-        {/* 伝える言葉 */}
-        <section className="stack-10" aria-labelledby="tell-in">
-          <h2 id="tell-in" className="start__label">{t.tellIn}</h2>
-          <div className="seg" role="group" aria-labelledby="tell-in">
-            {TARGET_LANGS.map((x) => (
-              <Choice key={x} selected={target === x} onClick={() => p.onPickTarget(x)}>
-                <span lang={getLang(x).htmlLang}>{x === 'zh' ? '中文' : getLang(x).native}</span>
-              </Choice>
-            ))}
-          </div>
-          {same ? <p className="note" role="alert">{t.sameLang}</p> : null}
-        </section>
+        </div>
 
         {/* 年齢・性別（既定値なし） */}
         <section className="stack-10" aria-labelledby="age-h">

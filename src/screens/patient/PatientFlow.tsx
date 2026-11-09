@@ -10,7 +10,7 @@ import { UiLangProvider, rememberBasics, rememberCaseLang, rememberFollowUps } f
 import { detectLocale, readDeviceLocales, readFormatCountry } from '../../lib/detectLocale';
 import { SIMULATED_LOCALE } from '../../lib/params';
 import { loadConfig } from '../../lib/config';
-import { TargetCtx, rememberTarget, targetFromUrl, type TargetLang } from '../../lib/target';
+import { TargetCtx, guessTarget, rememberTarget, type TargetLang } from '../../lib/target';
 import { coveredFollowUps, interpret, rememberInterpretation, type InterpretedItems } from '../../lib/interpret';
 import { SpeechError, speechLocale, startListening, type SpeechErrorKind, type SpeechSession } from '../../lib/speech';
 import StartStep from './StartStep';
@@ -59,8 +59,11 @@ export interface FlowState {
   confirming: boolean;
 }
 
+/** 伝える言葉の推測（URL の ?to= > 端末の時刻帯 > 日本語）。開いたときに一度だけ */
+const TARGET_GUESS = guessTarget();
+
 const INITIAL: FlowState = {
-  screen: 0, userLang: null, userRegion: null, target: targetFromUrl(),
+  screen: 0, userLang: null, userRegion: null, target: TARGET_GUESS.target,
   age: null, sex: null, step: 0, fu: 0, fuAnswers: {}, pain: null, recording: false,
   live: {}, interim: '', speechError: null,
   interpPhase: 'idle', interp: null, fuIds: null, edits: {}, confirming: false,
@@ -286,6 +289,7 @@ export default function PatientFlow() {
           lang={lang}
           region={region}
           target={s.target}
+          targetGuess={TARGET_GUESS}
           age={s.age}
           sex={s.sex}
           onPickLang={(id) => update({ userLang: id, userRegion: getLang(id).regions.length === 1 ? getLang(id).regions[0] : null })}
