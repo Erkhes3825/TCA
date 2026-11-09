@@ -237,7 +237,6 @@ export default function PatientFlow() {
         ) : null}
         <div className="phone__title">
           <strong>Tsutaeru</strong>
-          <span>{t.appSubtitle}</span>
         </div>
         <span className="phone__step">{stepLabel}</span>
         {/* 話し方のヒントは問診の画面だけ。常に出すと会話の場所を取るので、押したときだけ出す */}

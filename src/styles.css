@@ -127,8 +127,11 @@ button:focus-visible, a:focus-visible { outline: 3px solid #1F6FD1; outline-offs
 .version { margin-top: auto; text-align: center; font-size: 0.875rem; color: var(--muted); }
 
 .start__label { font-size: 1rem; color: var(--muted); }
-.start__lang { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 0.75rem; padding: 0.875rem 1rem; border: 1.5px solid var(--accent); border-radius: 1rem; background: var(--surface); }
-.start__lang-name { font-size: 1.75rem; font-weight: 700; line-height: 1.2; }
+.start__lang { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.875rem 1rem; border: 1.5px solid var(--accent); border-radius: 1rem; background: var(--surface); }
+/* 標準の文字なら言語名とボタンが1行。文字を大きくして入らなければ、単語の途中で切らずにボタンを下に回す */
+.start__lang-name { flex: 1 1 auto; min-width: 0; font-size: 1.75rem; font-weight: 700; line-height: 1.2; overflow-wrap: break-word; }
+.start__lang .btn-small { flex: none; }
+.start__missing { outline: 3px solid var(--accent); outline-offset: 6px; border-radius: 0.75rem; }
 .start__lang .btn-small { display: inline-flex; align-items: center; gap: 0.375rem; }
 .start__arrow { display: flex; justify-content: center; color: var(--accent); margin-block: -0.75rem; }
 .start__sub { font-size: 0.875rem; font-weight: 700; color: var(--muted); }
