@@ -1,6 +1,7 @@
 // 線画アイコン（絵文字は使わない）
 const PATHS = {
   back: <path d="M15 18l-6-6 6-6" />,
+  arrowDown: (<><path d="M12 4v16" /><path d="M6 14l6 6 6-6" /></>),
   mic: (<><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0" /><path d="M12 18v3" /></>),
   edit: (<><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></>),
   check: <path d="M5 12l5 5 9-10" />,

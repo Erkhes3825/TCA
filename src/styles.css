@@ -126,11 +126,32 @@ button:focus-visible, a:focus-visible { outline: 3px solid #1F6FD1; outline-offs
 .screen__foot--white { background: var(--surface); }
 .version { margin-top: auto; text-align: center; font-size: 0.875rem; color: var(--muted); }
 
-.detect-card { background: var(--surface); border: 1.5px solid var(--accent); border-radius: 1rem; padding: 1.125rem; display: flex; flex-direction: column; gap: 0.875rem; }
-.detect-card__head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; color: var(--accent); font-size: 0.875rem; font-weight: 700; letter-spacing: .04em; }
-.detect-card__head code { margin-left: auto; font-size: 0.8125rem; color: var(--muted); background: var(--ground-2); border-radius: 0.375rem; padding: 2px 0.5rem; font-weight: 400; }
-.detect-card__lang { font-size: 1.75rem; font-weight: 700; }
-.detect-card__region { font-size: 1.0625rem; }
+.start__lang { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 0.75rem; padding: 0.625rem 0.875rem 0.625rem 1rem; border: 1.5px solid var(--accent); border-radius: 1rem; background: var(--surface); }
+.start__lang-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+/* 標準の文字なら言語名とボタンが1行。文字を大きくして入らなければ、単語の途中で切らずにボタンを下に回す */
+.start__lang-name { flex: 1 1 auto; min-width: 0; font-size: 1.75rem; font-weight: 700; line-height: 1.2; overflow-wrap: break-word; }
+.start__lang .btn-small { flex: none; }
+.start__dialect { align-self: flex-start; max-width: 100%; min-height: 2rem; margin-top: 0.25rem; padding: 0 0.5rem; border: 1.5px solid var(--line-btn); border-radius: 0.5rem; background: var(--surface); color: var(--ink); font: inherit; font-size: 1rem; }
+.start__dialect:focus-visible { outline: 3px solid #1F6FD1; outline-offset: 2px; }
+.start__missing { outline: 3px solid var(--accent); outline-offset: 6px; border-radius: 0.75rem; }
+.start__lang .btn-small { display: inline-flex; align-items: center; gap: 0.375rem; }
+.start { gap: 1.5rem; padding-top: 1rem; }
+.start__group { display: flex; flex-direction: column; gap: 0.5rem; }
+.start__cap { font-size: 0.875rem; font-weight: 700; color: var(--muted); }
+.start__arrow { display: flex; justify-content: center; color: var(--accent); margin-block: -0.375rem; }
+/* カードのすぐ下に寄せる（押せる高さは 28px 以上を保つ） */
+.start__details-toggle { min-height: 1.75rem; margin-top: -0.25rem; }
+.start__field { display: flex; flex-direction: column; gap: 0.375rem; }
+.start__opts { display: grid; gap: 0.375rem; }
+.start__opts--5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.start__opts--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.start__opts .choice { min-height: 2.75rem; padding: 0.25rem; border-radius: 0.75rem; line-height: 1.2; }
+/* 大きい文字では5つが1行に入らないので3列に */
+html[data-text='l'] .start__opts--5, html[data-text='xl'] .start__opts--5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.start__need { font-size: 0.9375rem; color: var(--muted); text-align: center; }
+#start-details { padding: 0.875rem 1rem; border-radius: 0.75rem; background: var(--surface); border: 1px solid var(--line); }
+.settings__row--stack { flex-direction: column; align-items: stretch; }
+.settings__row--stack dt { flex: none; }
 .settings { display: flex; flex-direction: column; }
 .settings__row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.75rem; padding: 0.75rem 0; border-top: 1px solid var(--line-2); }
 .settings__row:first-child { border-top: 0; padding-top: 0; }

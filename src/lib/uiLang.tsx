@@ -50,3 +50,18 @@ export function recallFollowUps(): StoredFollowUps | null {
   } catch { /* 読めなければサンプルを出す */ }
   return null;
 }
+
+// 最初の画面で選んだ年齢・性別（UI.ages / UI.sexes の番号）も引き継ぐ。無ければ医療者画面はサンプルの値
+const BASICS_KEY = 'tsutaeru.basics';
+
+export function rememberBasics(v: { age: number | null; sex: number | null }) {
+  try { sessionStorage.setItem(BASICS_KEY, JSON.stringify(v)); } catch { /* 保存できなければサンプルの値 */ }
+}
+
+export function recallBasics(): { age: number; sex: number } | null {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(BASICS_KEY) ?? 'null');
+    if (v && typeof v.age === 'number' && typeof v.sex === 'number') return v;
+  } catch { /* 読めなければサンプル */ }
+  return null;
+}

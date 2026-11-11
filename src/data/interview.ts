@@ -4,16 +4,7 @@
 // それ以外の言語は質問だけ訳し、回答は英語のサンプルを出す（画面に注記あり）。
 // 英語以外のサンプル回答はモック用の作文。本番前にネイティブチェックが必要。
 import type { LangId } from './languages';
-import { UI, type DeptId } from './ui';
-
-export const DEPARTMENT_IDS: { id: DeptId; ja: string }[] = [
-  { id: 'im', ja: '内科' },
-  { id: 'pe', ja: '小児科' },
-  { id: 'or', ja: '整形外科' },
-  { id: 'de', ja: '皮膚科' },
-  { id: 'ob', ja: '産婦人科' },
-  { id: 'en', ja: '耳鼻咽喉科' },
-];
+import { UI } from './ui';
 
 /** 年齢・性別は UI.ages / UI.sexes の何番目か */
 export const AGE_COUNT = 5;

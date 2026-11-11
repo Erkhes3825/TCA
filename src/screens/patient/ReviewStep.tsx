@@ -4,7 +4,6 @@ import Icon from '../../components/Icon';
 import type { Turn } from '../../data/interview';
 import { FOLLOW_UP_TEXT, answerLabel, getVoiceAnswer, isVoiceId, type FollowUpAnswers, type FollowUpDef, type FollowUpId } from '../../data/followUps';
 import type { LangId } from '../../data/languages';
-import type { DeptId } from '../../data/ui';
 import type { InterpretFieldId, InterpretedItems } from '../../lib/interpret';
 import { useUi } from '../../lib/uiLang';
 
@@ -17,7 +16,6 @@ interface Props {
   /** AI の解釈（本物の音声認識＋interpretUrl のとき）。あれば患者の言語での言い直しを出す */
   interp: InterpretedItems | null;
   lang: LangId;
-  dept: DeptId;
   pain: number | null;
   /** 本人が書き直した内容。キーは項目名 */
   edits: Record<string, string>;
@@ -30,7 +28,7 @@ interface Props {
 
 interface Row { k: string; v: string; editable: boolean }
 
-export default function ReviewStep({ turns, followUps, fuAnswers, liveVoice, interp, lang, dept, pain, edits, onEdit, busy, onConfirm, onFix }: Props) {
+export default function ReviewStep({ turns, followUps, fuAnswers, liveVoice, interp, lang, pain, edits, onEdit, busy, onConfirm, onFix }: Props) {
   const t = useUi();
   const ft = FOLLOW_UP_TEXT[lang];
   const [editing, setEditing] = useState<string | null>(null);
@@ -43,7 +41,7 @@ export default function ReviewStep({ turns, followUps, fuAnswers, liveVoice, int
     return answerLabel(ft, f.id, a, true) ?? '';
   };
 
-  const rows: Row[] = [{ k: t.department, v: t.departments[dept], editable: false }];
+  const rows: Row[] = [];
   if (interp) {
     // AI が当てはめた内容を、患者の言語の言い直しで出す。当てはまらなかった項目は、話した言葉そのもの・ボタンの回答
     const said = (ids: InterpretFieldId[]) => ids.map((id) => (interp[id]?.found ? interp[id].restated : '')).filter(Boolean).join(' / ');

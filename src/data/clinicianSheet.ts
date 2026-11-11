@@ -1,13 +1,14 @@
 // 医療者向けビューのサンプル（患者フローのサンプル回答を日本語化したもの）。
 // 実装時は患者フローの結果から生成する。
 // 日本語の訳はどの言語でも同じ症例なので共通。言語ごとに変わるのは原文と、口語・方言の置き換え箇所。
+// データは日本語で持ち、中国語・モンゴル語で出すときは表示の直前に sheetI18n.ts の tr() で置き換える。
 
 import {
   FOLLOW_UPS, FOLLOW_UP_TEXT, SAMPLE_FOLLOW_UP_ANSWERS, getVoiceAnswer, isVoiceId,
   type FollowUpAnswers, type FollowUpId, type OptId, type VoiceId,
 } from './followUps';
 import { getLang, type LangId } from './languages';
-import { INTERPRET_FIELDS, type StoredInterpretation } from '../lib/interpret';
+import { INTERPRET_FIELDS, itemText, type StoredInterpretation } from '../lib/interpret';
 
 export type CaseLang = 'en' | 'zh' | 'vi';
 
@@ -33,12 +34,8 @@ export interface SheetCase {
   rows: SheetRow[];
 }
 
-export const SHEET_META_COMMON: { k: string; v: string }[] = [
-  { k: '受付番号', v: 'MQ-4821' },
-  { k: '希望診療科', v: '内科' },
-  { k: '年齢', v: '30〜49歳' },
-  { k: '性別', v: '女性' },
-];
+/** サンプル症例の受付番号・年齢・性別（年齢・性別は UI.ages / UI.sexes の番号）。診療科は受付で決めるので持たない */
+export const SHEET_META_SAMPLE = { receipt: 'MQ-4821', age: 2, sex: 0 };
 
 export const SHEET_ALLERGY_LABEL = 'アレルギー：ペニシリン系抗菌薬';
 
@@ -259,7 +256,7 @@ export function interpretedSheet(si: StoredInterpretation, fu: { asked: FollowUp
   for (const f of INTERPRET_FIELDS) {
     const it = si.items[f.id];
     const required = isRequiredKey(f.key);
-    if (it?.found) rows.push({ key: f.key, value: it.ja, original: it.evidence, terms: it.terms ?? [], required });
+    if (it?.found) rows.push({ key: f.key, value: itemText(it), original: it.evidence, terms: it.terms ?? [], required });
     else if (fuRowByKey.has(f.key)) rows.push(fuRowByKey.get(f.key)!);
     // 妊娠は対象の人にだけ聞くので、聞いていなければ行を出さない（必須項目の欄で「対象外」になる）
     else if (f.id === 'pregnancy' && !fu?.asked.includes('pregnancy')) continue;
@@ -276,9 +273,10 @@ export function interpretedSheet(si: StoredInterpretation, fu: { asked: FollowUp
       label: '今回の回答',
       htmlLang: L.htmlLang,
       originalLabel: `原文（${L.native} / ${si.locale}）`,
-      meta: { language: `${L.ja}（${si.locale}）`, detection: '音声認識＋AIの解釈' },
-      // 「なし」と答えたときは警告を出さない
-      allergyOriginal: allergy?.found && !/^なし/.test(allergy.ja.trim()) ? allergy.evidence : '',
+      // 言語名は、日本語で出すときは日本語名、ほかは患者の言語での名前
+      meta: { language: si.target === 'mn' ? `${L.native} (${si.locale})` : `${si.target === 'ja' ? L.ja : L.native}（${si.locale}）`, detection: '音声認識＋AIの解釈' },
+      // 「ない」と答えたときは警告を出さない（古い版の関数は denied を返さないので「なし」で判断）
+      allergyOriginal: allergy?.found && !allergy.denied && !/^なし/.test(itemText(allergy).trim()) ? allergy.evidence : '',
       rows,
     },
     rows,

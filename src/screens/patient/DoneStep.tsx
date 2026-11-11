@@ -1,6 +1,7 @@
 import FakeQR from '../../components/FakeQR';
 import Gloss from '../../components/Gloss';
 import Icon from '../../components/Icon';
+import { SHOW_GLOSS } from '../../lib/params';
 import { useUi } from '../../lib/uiLang';
 
 export default function DoneStep({ onReset }: { onReset: () => void }) {
@@ -15,7 +16,7 @@ export default function DoneStep({ onReset }: { onReset: () => void }) {
         <div className="qr-card">
           <FakeQR />
           <span className="qr-card__code">MQ-4821</span>
-          <span className="muted xsmall" lang="ja">サンプル表示（読み取りできません）</span>
+          {SHOW_GLOSS ? <span className="muted xsmall" lang="ja">サンプル表示（読み取りできません）</span> : null}
         </div>
         <a className="link-strong" href="#/clinician">{t.previewClinic}</a>
       </div>
