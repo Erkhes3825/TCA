@@ -63,7 +63,8 @@ curl -X POST -H "Origin: https://ユーザー名.github.io" https://<名前>.azu
 
 ## 5. アプリに URL を教える
 
-`docs/config.json`（開発中は `public/config.json`）を書き換えます。
+**`public/config.json` と `docs/config.json` の両方**を、同じ内容に書き換えます。
+公開サイトが読むのは `docs/config.json` ですが、`npm run build` のたびに `public/config.json` の内容で上書きされます。片方だけ直すと、次のビルドで URL が消え、エラーも出ずにデモや音声認識だけの動きに戻ります。
 
 ```json
 {
@@ -89,7 +90,7 @@ curl -X POST -H "Origin: https://ユーザー名.github.io" https://<名前>.azu
 | `AZURE_OPENAI_API_VERSION` | 任意。既定は `2024-10-21`。エラーになる場合は、モデルに合う API バージョンを公式の説明で確認して入れる |
 
 4. もう一度デプロイ（`func azure functionapp publish <Function App の名前>`）
-5. `docs/config.json`（開発中は `public/config.json`）に URL を足す
+5. **`public/config.json` と `docs/config.json` の両方**に URL を足す（片方だけだと、次のビルドで消える。5 章を参照）
 
 ```json
 {
