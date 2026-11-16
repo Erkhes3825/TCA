@@ -30,7 +30,7 @@ const FIELDS = {
 
 const MAX_CHARS = 8000;
 /** Azure OpenAI の応答を待つ上限。アプリ側（20秒）より短くして、こちらのエラーを先に返す */
-const MODEL_TIMEOUT_MS = 15000;
+const MODEL_TIMEOUT_MS = 40000;
 
 const item = {
   type: 'object',
@@ -132,7 +132,7 @@ app.http('interpret', {
             { role: 'system', content: system(Object.hasOwn(TARGETS, body.target) ? TARGETS[body.target] : TARGETS.ja) },
             { role: 'user', content: `患者の言語: ${String(body.locale || body.lang || '不明')}\n\n${transcript}` },
           ],
-          
+          reasoning_effort: 'minimal',
           response_format: { type: 'json_schema', json_schema: { name: 'intake', strict: true, schema } },
         }),
       });
