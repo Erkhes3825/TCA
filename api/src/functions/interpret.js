@@ -30,7 +30,7 @@ const FIELDS = {
 
 const MAX_CHARS = 8000;
 /** Azure OpenAI の応答を待つ上限。アプリ側（20秒）より短くして、こちらのエラーを先に返す */
-const MODEL_TIMEOUT_MS = 40000;
+const MODEL_TIMEOUT_MS = 18000;
 
 const item = {
   type: 'object',
